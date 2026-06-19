@@ -86,6 +86,26 @@ describe('Storefront API endpoints', () => {
     expect(bad.status).toBe(401)
   })
 
+  it('registers and logs users out through auth endpoints', async () => {
+    const signup = await request(app)
+      .post('/auth/register')
+      .send({ firstname: 'Signup', lastname: 'User', password: 'pass123' })
+
+    const logout = await request(app)
+      .post('/auth/logout')
+      .set('Authorization', `Bearer ${signup.body.token}`)
+
+    const rejectedLogout = await request(app).post('/auth/logout')
+
+    expect(signup.status).toBe(201)
+    expect(signup.body.token).toBeDefined()
+    expect(signup.body.user.firstname).toBe('Signup')
+    expect(signup.body.user.password_digest).toBeUndefined()
+    expect(logout.status).toBe(200)
+    expect(logout.body.message).toBe('Logged out')
+    expect(rejectedLogout.status).toBe(401)
+  })
+
   it('handles product endpoints', async () => {
     await request(app)
       .post(`/orders/${orderId}/products`)
@@ -93,6 +113,8 @@ describe('Storefront API endpoints', () => {
       .send({ product_id: productId, quantity: 2 })
 
     const list = await request(app).get('/products')
+    const filtered = await request(app).get('/products?search=pen&category=office&maxPrice=3&limit=50&offset=0')
+    const filters = await request(app).get('/products/filters')
     const show = await request(app).get(`/products/${productId}`)
     const popular = await request(app).get('/products/popular')
     const update = await request(app)
@@ -102,6 +124,9 @@ describe('Storefront API endpoints', () => {
     const remove = await request(app).delete(`/products/${productId}`).set('Authorization', `Bearer ${token}`)
 
     expect(list.status).toBe(200)
+    expect(filtered.body.length).toBe(1)
+    expect(filters.body.categories).toEqual(['office'])
+    expect(filters.body.maxPrice).toBe(3)
     expect(show.body.name).toBe('Pen')
     expect(popular.body[0].name).toBe('Pen')
     expect(update.body.name).toBe('Blue Pen')

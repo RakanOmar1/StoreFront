@@ -9,3 +9,9 @@ export interface UserInput {
   lastname: string
   password: string
 }
+
+export interface UserUpdate {
+  firstname: string
+  lastname: string
+  password?: string
+}

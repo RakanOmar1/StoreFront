@@ -6,9 +6,23 @@ const model = new ProductModel()
 export class ProductController {
   async index(req: Request, res: Response): Promise<void> {
     try {
-      res.json(await model.index())
+      res.json(await model.index({
+        search: optionalString(req.query.search),
+        category: optionalCategory(req.query.category),
+        maxPrice: optionalNumber(req.query.maxPrice),
+        limit: optionalNumber(req.query.limit, 100),
+        offset: optionalNumber(req.query.offset)
+      }))
     } catch (error) {
       res.status(500).json('Could not get products')
+    }
+  }
+
+  async filters(req: Request, res: Response): Promise<void> {
+    try {
+      res.json(await model.filters())
+    } catch (error) {
+      res.status(500).json('Could not get product filters')
     }
   }
 
@@ -66,4 +80,27 @@ export class ProductController {
       res.status(500).json('Could not get popular products')
     }
   }
+}
+
+function optionalString(value: unknown): string | undefined {
+  return typeof value === 'string' && value.trim() ? value.trim() : undefined
+}
+
+function optionalCategory(value: unknown): string | undefined {
+  const category = optionalString(value)
+  return category && category !== 'all' ? category : undefined
+}
+
+function optionalNumber(value: unknown, max?: number): number | undefined {
+  if (typeof value !== 'string' || value.trim() === '') {
+    return undefined
+  }
+
+  const number = Number(value)
+
+  if (!Number.isFinite(number) || number < 0) {
+    return undefined
+  }
+
+  return typeof max === 'number' ? Math.min(Math.floor(number), max) : Math.floor(number)
 }

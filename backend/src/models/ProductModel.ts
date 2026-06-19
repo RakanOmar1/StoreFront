@@ -1,9 +1,45 @@
 import pool from '../config/database'
-import { Product } from '../types/Product'
+import { Product, ProductFilters, ProductQuery } from '../types/Product'
 
 export class ProductModel {
-  async index(): Promise<Product[]> {
-    const result = await pool.query('SELECT * FROM products ORDER BY id')
+  async index(filters: ProductQuery = {}): Promise<Product[]> {
+    const values: (string | number)[] = []
+    const conditions: string[] = []
+
+    if (filters.search) {
+      values.push(`%${filters.search}%`)
+      conditions.push(`LOWER(name) LIKE LOWER($${values.length})`)
+    }
+
+    if (filters.category) {
+      values.push(filters.category)
+      conditions.push(`category = $${values.length}`)
+    }
+
+    if (typeof filters.maxPrice === 'number') {
+      values.push(filters.maxPrice)
+      conditions.push(`price <= $${values.length}`)
+    }
+
+    let query = 'SELECT * FROM products'
+
+    if (conditions.length > 0) {
+      query += ` WHERE ${conditions.join(' AND ')}`
+    }
+
+    query += ' ORDER BY id'
+
+    if (typeof filters.limit === 'number') {
+      values.push(filters.limit)
+      query += ` LIMIT $${values.length}`
+    }
+
+    if (typeof filters.offset === 'number') {
+      values.push(filters.offset)
+      query += ` OFFSET $${values.length}`
+    }
+
+    const result = await pool.query(query, values)
     return result.rows
   }
 
@@ -43,5 +79,17 @@ export class ProductModel {
        LIMIT 5`
     )
     return result.rows
+  }
+
+  async filters(): Promise<ProductFilters> {
+    const categories = await pool.query(
+      'SELECT DISTINCT category FROM products WHERE category IS NOT NULL ORDER BY category'
+    )
+    const maxPrice = await pool.query('SELECT COALESCE(MAX(price), 0) AS max_price FROM products')
+
+    return {
+      categories: categories.rows.map(row => row.category),
+      maxPrice: Number(maxPrice.rows[0].max_price)
+    }
   }
 }

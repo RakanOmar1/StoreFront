@@ -1,7 +1,8 @@
 import { Injectable } from '@angular/core'
 import { HttpClient } from '@angular/common/http'
-import { BehaviorSubject, Observable, tap } from 'rxjs'
-import { PublicUser, UserInput } from '../../shared/interfaces/user'
+import { BehaviorSubject, Observable, of, tap } from 'rxjs'
+import { catchError, mapTo } from 'rxjs/operators'
+import { PublicUser, UserInput, UserUpdate } from '../../shared/interfaces/user'
 import { environment } from '../../../environments/environment'
 
 interface AuthResponse {
@@ -27,8 +28,17 @@ export class AuthService {
   }
 
   register(payload: UserInput): Observable<AuthResponse> {
-    return this.http.post<AuthResponse>(`${this.api}/users`, payload).pipe(
+    return this.http.post<AuthResponse>(`${this.api}/auth/register`, payload).pipe(
       tap(r => { this.setSession(r) })
+    )
+  }
+
+  updateProfile(userId: number | string, payload: UserUpdate): Observable<PublicUser> {
+    return this.http.put<PublicUser>(`${this.api}/users/${userId}`, payload).pipe(
+      tap(user => {
+        localStorage.setItem(this.userKey, JSON.stringify(user))
+        this.authState.next(true)
+      })
     )
   }
 
@@ -47,7 +57,22 @@ export class AuthService {
     return localStorage.getItem(this.tokenKey)
   }
 
-  logout() {
+  logout(): Observable<boolean> {
+    const token = this.getToken()
+
+    if (!token) {
+      this.setToken(null)
+      return of(true)
+    }
+
+    return this.http.post(`${this.api}/auth/logout`, {}).pipe(
+      mapTo(true),
+      catchError(() => of(true)),
+      tap(() => { this.setToken(null) })
+    )
+  }
+
+  clearSession() {
     this.setToken(null)
   }
 

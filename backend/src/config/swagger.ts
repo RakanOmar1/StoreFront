@@ -64,6 +64,24 @@ const swaggerDocument = {
     }
   },
   paths: {
+    '/auth/register': {
+      post: {
+        tags: ['Auth'],
+        summary: 'Register',
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/UserInput' }
+            }
+          }
+        },
+        responses: {
+          '201': { description: 'Registered' },
+          '400': { description: 'Could not create user' }
+        }
+      }
+    },
     '/auth/login': {
       post: {
         tags: ['Auth'],
@@ -86,6 +104,17 @@ const swaggerDocument = {
         responses: {
           '200': { description: 'Logged in' },
           '401': { description: 'Invalid credentials' }
+        }
+      }
+    },
+    '/auth/logout': {
+      post: {
+        tags: ['Auth'],
+        summary: 'Log out',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          '200': { description: 'Logged out' },
+          '401': { description: 'Unauthorized' }
         }
       }
     },
@@ -160,6 +189,13 @@ const swaggerDocument = {
       get: {
         tags: ['Products'],
         summary: 'List products',
+        parameters: [
+          { name: 'search', in: 'query', schema: { type: 'string' } },
+          { name: 'category', in: 'query', schema: { type: 'string' } },
+          { name: 'maxPrice', in: 'query', schema: { type: 'integer', minimum: 0 } },
+          { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 0, maximum: 100 } },
+          { name: 'offset', in: 'query', schema: { type: 'integer', minimum: 0 } }
+        ],
         responses: { '200': { description: 'Products returned' } }
       },
       post: {
@@ -185,6 +221,13 @@ const swaggerDocument = {
         tags: ['Products'],
         summary: 'List popular products',
         responses: { '200': { description: 'Popular products returned' } }
+      }
+    },
+    '/products/filters': {
+      get: {
+        tags: ['Products'],
+        summary: 'Get product filter metadata',
+        responses: { '200': { description: 'Product filter metadata returned' } }
       }
     },
     '/products/{id}': {

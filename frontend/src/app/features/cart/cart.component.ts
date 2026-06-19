@@ -52,8 +52,14 @@ import { CartService } from '../../core/services/cart.service'
 
           <strong class="line-total">{{ i.product.price * i.quantity | currency }}</strong>
 
-          <button class="remove-button" type="button" (click)="remove(i.product.id)">
-            Remove
+          <button class="remove-button icon-button" type="button" (click)="remove(i.product.id)" aria-label="Remove item">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M3 6h18" />
+              <path d="M8 6V4h8v2" />
+              <path d="M6 6l1 15h10l1-15" />
+              <path d="M10 11v6" />
+              <path d="M14 11v6" />
+            </svg>
           </button>
         </article>
       </div>
@@ -63,6 +69,16 @@ import { CartService } from '../../core/services/cart.service'
           <p class="eyebrow">Summary</p>
           <h2>Order summary</h2>
           <p class="summary-note top-note">Secure checkout for your SoleStreet order.</p>
+        </div>
+
+        <div class="cart-summary-items" aria-label="Selected products">
+          <div class="cart-summary-item" *ngFor="let i of items">
+            <div>
+              <strong>{{ i.product.name }}</strong>
+              <span>Qty {{ i.quantity }} x {{ i.product.price | currency }}</span>
+            </div>
+            <strong>{{ i.product.price * i.quantity | currency }}</strong>
+          </div>
         </div>
 
         <div class="summary-row">

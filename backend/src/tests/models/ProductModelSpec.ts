@@ -30,6 +30,29 @@ describe('ProductModel', () => {
     expect(product.name).toBe('Book')
   })
 
+  it('filters and paginates products', async () => {
+    await model.create({ name: 'Trail Runner', price: 90, category: 'running' })
+    await model.create({ name: 'City Boot', price: 140, category: 'boots' })
+    await model.create({ name: 'Road Runner', price: 120, category: 'running' })
+
+    const filtered = await model.index({ search: 'runner', category: 'running', maxPrice: 100, limit: 50, offset: 0 })
+    const page = await model.index({ limit: 1, offset: 1 })
+
+    expect(filtered.length).toBe(1)
+    expect(filtered[0].name).toBe('Trail Runner')
+    expect(page[0].name).toBe('City Boot')
+  })
+
+  it('returns product filter metadata', async () => {
+    await model.create({ name: 'Trail Runner', price: 90, category: 'running' })
+    await model.create({ name: 'City Boot', price: 140, category: 'boots' })
+
+    const filters = await model.filters()
+
+    expect(filters.categories).toEqual(['boots', 'running'])
+    expect(filters.maxPrice).toBe(140)
+  })
+
   it('updates and deletes products', async () => {
     await model.create({ name: 'Mug', price: 8, category: 'kitchen' })
 

@@ -1,80 +1,74 @@
-import { Component, OnInit } from '@angular/core'
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, HostListener, OnInit } from '@angular/core'
 import { CommonModule } from '@angular/common'
-import { FormsModule } from '@angular/forms'
-import { RouterModule } from '@angular/router'
 import { ProductService } from '../../core/services/product.service'
 import { Product } from '../../shared/interfaces/product'
 import { CartService } from '../../core/services/cart.service'
-import { ProductItemComponent } from './product-item.component'
+import { ProductFiltersComponent } from './product-filters.component'
+import { ProductGridComponent } from './product-grid.component'
+import { ProductHeroComponent } from './product-hero.component'
 
 @Component({
   selector: 'app-product-list',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, ProductItemComponent],
+  imports: [CommonModule, ProductHeroComponent, ProductFiltersComponent, ProductGridComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
   <section class="products-page">
-    <div class="products-header">
-      <div class="page-heading">
-        <p class="eyebrow">Shoe store</p>
-        <h1>Find your next pair</h1>
-        <p class="muted">Shop running, lifestyle, and boots from the database.</p>
-      </div>
+    <app-product-hero></app-product-hero>
 
-      <div class="category-tabs" aria-label="Product categories">
-        <button type="button" [class.active]="selectedCategory === 'all'" (click)="selectCategory('all')">All</button>
-        <button
-          type="button"
-          *ngFor="let category of categories"
-          [class.active]="selectedCategory === category"
-          (click)="selectCategory(category)"
-        >
-          {{ category }}
-        </button>
-      </div>
-    </div>
+    <app-product-filters
+      *ngIf="filtersLoaded"
+      [categories]="categories"
+      [selectedCategory]="selectedCategory"
+      [searchTerm]="searchTerm"
+      [priceLimit]="priceLimit"
+      [maxProductPrice]="maxProductPrice"
+      (searchTermChange)="updateSearchTerm($event)"
+      (priceLimitChange)="updatePriceLimit($event)"
+      (categorySelected)="selectCategory($event)"
+      (cleared)="clearFilters()"
+    ></app-product-filters>
 
-    <div class="filters-card" *ngIf="!loading && !error">
-      <label>
-        Search
-        <input type="search" [(ngModel)]="searchTerm" placeholder="Search shoes..." />
-      </label>
-
-      <label>
-        Max price: {{ priceLimit | currency }}
-        <input type="range" min="0" [max]="maxProductPrice" step="5" [(ngModel)]="priceLimit" />
-      </label>
-
-      <button type="button" (click)="clearFilters()">Clear filters</button>
-    </div>
-
-    <div *ngIf="loading" class="state-card">Loading products...</div>
+    <div *ngIf="loading && products.length === 0" class="state-card">Loading products...</div>
     <div *ngIf="error" class="state-card error">{{ error }}</div>
-    <div *ngIf="!loading && !error && filteredProducts.length === 0" class="state-card">No shoes match these filters.</div>
+    <div *ngIf="!loading && !error && products.length === 0" class="state-card">No shoes match these filters.</div>
 
-    <div class="product-grid" *ngIf="!loading && !error && filteredProducts.length > 0">
-      <app-product-item
-        *ngFor="let p of filteredProducts"
-        [product]="p"
-        [quantity]="productCartQuantity(p)"
-        [added]="addedProductId === p.id"
-        (addToCart)="add($event)"
-      ></app-product-item>
-    </div>
+    <app-product-grid
+      *ngIf="!error && products.length > 0"
+      [products]="products"
+      [cartQuantities]="cartQuantities"
+      [addedProductId]="addedProductId"
+      (addToCart)="add($event)"
+    ></app-product-grid>
+
+    <div *ngIf="loadingMore" class="state-card loading-more">Loading more products...</div>
   </section>
   `
 })
 export class ProductListComponent implements OnInit {
   products: Product[] = []
-  categories = ['running', 'lifestyle', 'boots']
+  categories: string[] = []
   selectedCategory = 'all'
   searchTerm = ''
   priceLimit = 0
+  maxProductPrice = 0
+  filtersLoaded = false
   loading = false
+  loadingMore = false
+  hasMore = true
   error: string | null = null
   addedProductId?: number
   cartQuantities: Record<number, number> = {}
+  private readonly pageSize = 50
+  private readonly filterDelayMs = 600
+  private filterTimer?: number
+  private pendingReset = false
 
-  constructor(private productService: ProductService, private cart: CartService) {}
+  constructor(
+    private productService: ProductService,
+    private cart: CartService,
+    private cdr: ChangeDetectorRef
+  ) {}
 
   ngOnInit() {
     this.cart.cart$.subscribe(items => {
@@ -85,56 +79,134 @@ export class ProductListComponent implements OnInit {
 
         return quantities
       }, {})
+      this.cdr.markForCheck()
     })
 
     this.loading = true
-    this.productService.getProducts().subscribe({
-      next: p => {
-        this.products = p
-        this.priceLimit = this.maxProductPrice
+    this.productService.getProductFilters().subscribe({
+      next: filters => {
+        this.categories = filters.categories
+        this.maxProductPrice = filters.maxPrice
+        this.priceLimit = filters.maxPrice
+        this.filtersLoaded = true
         this.loading = false
+        this.loadProducts(true)
+        this.cdr.markForCheck()
       },
-      error: e => { this.error = 'Could not load products'; this.loading = false }
+      error: () => {
+        this.error = 'Could not load product filters'
+        this.filtersLoaded = false
+        this.loading = false
+        this.cdr.markForCheck()
+      }
     })
   }
 
-  get maxProductPrice(): number {
-    return Math.max(0, ...this.products.map(product => product.price))
-  }
+  @HostListener('window:scroll')
+  onScroll() {
+    const nearBottom = window.innerHeight + window.scrollY >= document.body.offsetHeight - 500
 
-  get filteredProducts(): Product[] {
-    const search = this.searchTerm.trim().toLowerCase()
-
-    return this.products.filter(product => {
-      const matchesSearch = !search || product.name.toLowerCase().includes(search)
-      const matchesCategory = this.selectedCategory === 'all' || product.category === this.selectedCategory
-      const matchesPrice = product.price <= this.priceLimit
-
-      return matchesSearch && matchesCategory && matchesPrice
-    })
+    if (nearBottom) {
+      this.loadProducts(false)
+    }
   }
 
   selectCategory(category: string) {
     this.selectedCategory = category
+    window.clearTimeout(this.filterTimer)
+    this.loadProducts(true)
+  }
+
+  updateSearchTerm(searchTerm: string) {
+    this.searchTerm = searchTerm
+    this.onFilterChange()
+  }
+
+  updatePriceLimit(priceLimit: number) {
+    this.priceLimit = Number(priceLimit)
+    this.onFilterChange()
+  }
+
+  onFilterChange() {
+    window.clearTimeout(this.filterTimer)
+    this.filterTimer = window.setTimeout(() => this.loadProducts(true), this.filterDelayMs)
   }
 
   clearFilters() {
     this.searchTerm = ''
     this.selectedCategory = 'all'
     this.priceLimit = this.maxProductPrice
+    window.clearTimeout(this.filterTimer)
+    this.loadProducts(true)
+  }
+
+  loadProducts(reset: boolean) {
+    if (this.loading || this.loadingMore) {
+      if (reset) {
+        this.pendingReset = true
+      }
+
+      return
+    }
+
+    if (!reset && !this.hasMore) {
+      return
+    }
+
+    if (reset) {
+      this.products = []
+      this.hasMore = true
+      this.loading = true
+    } else {
+      this.loadingMore = true
+    }
+
+    this.error = null
+    this.cdr.markForCheck()
+
+    this.productService.getProducts({
+      search: this.searchTerm.trim(),
+      category: this.selectedCategory,
+      maxPrice: this.priceLimit,
+      limit: this.pageSize,
+      offset: reset ? 0 : this.products.length
+    }).subscribe({
+      next: products => {
+        this.products = reset ? products : [...this.products, ...products]
+        this.hasMore = products.length === this.pageSize
+        this.loading = false
+        this.loadingMore = false
+        this.runPendingReset()
+        this.cdr.markForCheck()
+      },
+      error: () => {
+        this.error = 'Could not load products'
+        this.loading = false
+        this.loadingMore = false
+        this.runPendingReset()
+        this.cdr.markForCheck()
+      }
+    })
+  }
+
+  private runPendingReset() {
+    if (!this.pendingReset) {
+      return
+    }
+
+    this.pendingReset = false
+    this.loadProducts(true)
   }
 
   add(product: Product) {
     this.cart.addToCart(product, 1)
     this.addedProductId = product.id
+    this.cdr.markForCheck()
     window.setTimeout(() => {
       if (this.addedProductId === product.id) {
         this.addedProductId = undefined
+        this.cdr.markForCheck()
       }
     }, 1200)
-  }
-
-  productCartQuantity(product: Product): number {
-    return this.cartQuantities[product.id] || 0
   }
 }

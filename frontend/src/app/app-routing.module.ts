@@ -8,6 +8,7 @@ import { AuthGuard } from './core/guards/auth.guard'
 import { LoginComponent } from './features/auth/login.component'
 import { RegisterComponent } from './features/auth/register.component'
 import { OrderConfirmationComponent } from './features/confirmation/order-confirmation.component'
+import { ProfileComponent } from './features/profile/profile.component'
 
 const routes: Routes = [
   { path: '', redirectTo: 'products', pathMatch: 'full' },
@@ -17,6 +18,7 @@ const routes: Routes = [
   { path: 'cart', component: CartComponent },
   { path: 'checkout', component: CheckoutComponent, canActivate: [AuthGuard] },
   { path: 'confirmation', component: OrderConfirmationComponent },
+  { path: 'profile', component: ProfileComponent, canActivate: [AuthGuard] },
   { path: 'auth/login', component: LoginComponent },
   { path: 'auth/register', component: RegisterComponent }
 ]
