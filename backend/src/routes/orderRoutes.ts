@@ -10,6 +10,7 @@ routes.get('/users/:userId/current', verifyAuthToken, controller.currentOrderByU
 routes.get('/users/:userId/completed', verifyAuthToken, controller.completedOrdersByUser)
 routes.get('/:id', verifyAuthToken, controller.show)
 routes.post('/', verifyAuthToken, controller.create)
+routes.post('/checkout', verifyAuthToken, controller.checkout)
 routes.put('/:id', verifyAuthToken, controller.update)
 routes.delete('/:id', verifyAuthToken, controller.delete)
 routes.post('/:id/products', verifyAuthToken, controller.addProduct)

@@ -19,6 +19,6 @@ export class AuthService {
   }
 
   generateToken(user: PublicUser): string {
-    return jwt.sign({ user }, this.tokenSecret)
+    return jwt.sign({ id: user.id, role: user.role || 'CUSTOMER', user }, this.tokenSecret, { expiresIn: '7d' })
   }
 }

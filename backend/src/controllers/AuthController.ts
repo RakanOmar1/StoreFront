@@ -17,7 +17,8 @@ export class AuthController {
 
   async login(req: Request, res: Response): Promise<void> {
     try {
-      const user = await model.authenticate(req.body.firstname, req.body.password)
+      const identifier = req.body.identifier || req.body.firstname || req.body.email || req.body.phone
+      const user = await model.authenticate(identifier, req.body.password)
 
       if (!user) {
         res.status(401).json('Invalid credentials')

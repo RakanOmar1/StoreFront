@@ -11,6 +11,7 @@ routes.get('/', controller.index)
 routes.post('/', verifyAuthToken, controller.create)
 routes.get('/:id', controller.show)
 routes.put('/:id', verifyAuthToken, controller.update)
+routes.patch('/:id', verifyAuthToken, controller.update)
 routes.delete('/:id', verifyAuthToken, controller.delete)
 
 export default routes

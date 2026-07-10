@@ -13,7 +13,7 @@ import { ProductCardComponent } from './product-card.component'
       <app-product-card
         *ngFor="let product of products; trackBy: trackProduct"
         [product]="product"
-        [quantity]="productCartQuantity(product)"
+        [quantity]="cartQuantities[product.id] || 0"
         [added]="addedProductId === product.id"
         (addToCart)="addToCart.emit($event)"
       ></app-product-card>
@@ -28,9 +28,5 @@ export class ProductGridComponent {
 
   trackProduct(index: number, product: Product): number {
     return product.id
-  }
-
-  productCartQuantity(product: Product): number {
-    return this.cartQuantities[product.id] || 0
   }
 }

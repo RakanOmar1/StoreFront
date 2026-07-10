@@ -1,9 +1,8 @@
 import { Injectable } from '@angular/core'
-import { HttpClient } from '@angular/common/http'
 import { BehaviorSubject, Observable, of, tap } from 'rxjs'
-import { catchError, mapTo } from 'rxjs/operators'
+import { catchError, map, mapTo } from 'rxjs/operators'
 import { PublicUser, UserInput, UserUpdate } from '../../shared/interfaces/user'
-import { environment } from '../../../environments/environment'
+import { ApiUrlService } from './api-url.service'
 
 interface AuthResponse {
   user: PublicUser
@@ -12,29 +11,35 @@ interface AuthResponse {
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-  private api = environment.apiUrl
   private tokenKey = 'token'
   private userKey = 'user'
   private authState = new BehaviorSubject<boolean>(!!this.getToken())
 
   isAuthenticated$ = this.authState.asObservable()
 
-  constructor(private http: HttpClient) {}
+  constructor(private api: ApiUrlService) {}
 
-  login(firstname: string, password: string): Observable<AuthResponse> {
-    return this.http.post<AuthResponse>(`${this.api}/auth/login`, { firstname, password }).pipe(
+  login(identifier: string, password: string, legacyFirstname?: string): Observable<AuthResponse> {
+    return this.api.post<AuthResponse>('/auth/login', {
+      identifier: identifier.trim(),
+      firstname: (legacyFirstname || identifier).trim(),
+      email: identifier.trim(),
+      phone: identifier.trim(),
+      password
+    }).pipe(
       tap(r => { this.setSession(r) })
     )
   }
 
   register(payload: UserInput): Observable<AuthResponse> {
-    return this.http.post<AuthResponse>(`${this.api}/auth/register`, payload).pipe(
+    return this.api.post<AuthResponse>('/auth/register', payload).pipe(
       tap(r => { this.setSession(r) })
     )
   }
 
   updateProfile(userId: number | string, payload: UserUpdate): Observable<PublicUser> {
-    return this.http.put<PublicUser>(`${this.api}/users/${userId}`, payload).pipe(
+    return this.api.put<PublicUser>(`/users/${userId}`, payload).pipe(
+      map(user => ({ ...user, ...payload })),
       tap(user => {
         localStorage.setItem(this.userKey, JSON.stringify(user))
         this.authState.next(true)
@@ -65,7 +70,7 @@ export class AuthService {
       return of(true)
     }
 
-    return this.http.post(`${this.api}/auth/logout`, {}).pipe(
+    return this.api.post('/auth/logout', {}).pipe(
       mapTo(true),
       catchError(() => of(true)),
       tap(() => { this.setToken(null) })

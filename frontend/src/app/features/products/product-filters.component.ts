@@ -1,26 +1,27 @@
 import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output } from '@angular/core'
 import { CommonModule } from '@angular/common'
 import { FormsModule } from '@angular/forms'
+import { TranslatePipe } from '../../core/i18n/translate.pipe'
 
 @Component({
   selector: 'app-product-filters',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, TranslatePipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="filters-card">
       <label>
-        Search
+        {{ 'common.search' | t }}
         <input
           type="search"
           [ngModel]="searchTerm"
           (ngModelChange)="searchTermChange.emit($event)"
-          placeholder="Search shoes..."
+          [placeholder]="'store.searchPlaceholder' | t"
         />
       </label>
 
       <label>
-        Max price: {{ priceLimit | currency }}
+        {{ 'store.maxPrice' | t }}: {{ priceLimit | currency }}
         <input
           type="range"
           min="0"
@@ -31,8 +32,8 @@ import { FormsModule } from '@angular/forms'
         />
       </label>
 
-      <div class="category-tabs" aria-label="Product categories">
-        <button type="button" [class.active]="selectedCategory === 'all'" (click)="categorySelected.emit('all')">All</button>
+      <div class="category-tabs" [attr.aria-label]="'store.productCategories' | t">
+        <button type="button" [class.active]="selectedCategory === 'all'" (click)="categorySelected.emit('all')">{{ 'common.all' | t }}</button>
         <button
           type="button"
           *ngFor="let category of categories; trackBy: trackCategory"
@@ -43,7 +44,7 @@ import { FormsModule } from '@angular/forms'
         </button>
       </div>
 
-      <button type="button" (click)="cleared.emit()">Clear filters</button>
+      <button type="button" (click)="cleared.emit()">{{ 'common.clearFilters' | t }}</button>
     </div>
   `
 })

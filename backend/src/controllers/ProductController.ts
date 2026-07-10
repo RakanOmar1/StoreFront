@@ -1,7 +1,10 @@
 import { Request, Response } from 'express'
 import { ProductModel } from '../models/ProductModel'
+import { ActivityLogService } from '../services/ActivityLogService'
 
 const model = new ProductModel()
+const activity = new ActivityLogService()
+type AuthRequest = Request & { user?: { id?: number; role?: string } }
 
 export class ProductController {
   async index(req: Request, res: Response): Promise<void> {
@@ -39,34 +42,40 @@ export class ProductController {
     }
   }
 
-  async create(req: Request, res: Response): Promise<void> {
+  async create(req: AuthRequest, res: Response): Promise<void> {
     try {
-      res.status(201).json(await model.create(req.body))
+      const product = await model.create(req.body)
+      await activity.logCreate('PRODUCT', product.id as number, req.user, product as Record<string, unknown>)
+      res.status(201).json(product)
     } catch (error) {
       res.status(400).json('Could not create product')
     }
   }
 
-  async update(req: Request, res: Response): Promise<void> {
+  async update(req: AuthRequest, res: Response): Promise<void> {
     try {
+      const before = await model.show(req.params.id)
       const product = await model.update(req.params.id, req.body)
       if (!product) {
         res.status(404).json('Product not found')
         return
       }
+      await activity.logUpdate('PRODUCT', req.params.id, req.user, before as Record<string, unknown>, product as Record<string, unknown>)
       res.json(product)
     } catch (error) {
       res.status(400).json('Could not update product')
     }
   }
 
-  async delete(req: Request, res: Response): Promise<void> {
+  async delete(req: AuthRequest, res: Response): Promise<void> {
     try {
+      const before = await model.show(req.params.id)
       const product = await model.delete(req.params.id)
       if (!product) {
         res.status(404).json('Product not found')
         return
       }
+      await activity.logDelete('PRODUCT', req.params.id, req.user, (before || product) as Record<string, unknown>)
       res.json(product)
     } catch (error) {
       res.status(500).json('Could not delete product')

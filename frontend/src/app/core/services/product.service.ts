@@ -1,9 +1,9 @@
 import { Injectable } from '@angular/core'
-import { HttpClient, HttpParams } from '@angular/common/http'
+import { HttpParams } from '@angular/common/http'
 import { Observable } from 'rxjs'
 import { map } from 'rxjs/operators'
 import { Product } from '../../shared/interfaces/product'
-import { environment } from '../../../environments/environment'
+import { ApiUrlService } from './api-url.service'
 
 export interface ProductQuery {
   search?: string
@@ -20,40 +20,73 @@ export interface ProductFilters {
 
 @Injectable({ providedIn: 'root' })
 export class ProductService {
-  private api = environment.apiUrl
-
-  constructor(private http: HttpClient) {}
+  constructor(private api: ApiUrlService) {}
 
   getProducts(query: ProductQuery = {}): Observable<Product[]> {
-    return this.http.get<Partial<Product>[]>(`${this.api}/products`, {
-      params: this.toParams(query)
-    }).pipe(
-      map(products => products.map(product => this.withFallbacks(product)))
+    const params = this.toParams(query).toString()
+    const path = params ? `/products?${params}` : '/products'
+
+    return this.api.get<Partial<Product>[] | { value?: Partial<Product>[] }>(path).pipe(
+      map(response => this.asList(response).map(product => this.withFallbacks(product)))
     )
   }
 
   getProductFilters(): Observable<ProductFilters> {
-    return this.http.get<ProductFilters>(`${this.api}/products/filters`)
+    return this.api.get<ProductFilters>('/products/filters')
   }
 
   getProduct(id: number | string): Observable<Product> {
-    return this.http.get<Partial<Product>>(`${this.api}/products/${id}`).pipe(
+    return this.api.get<Partial<Product>>(`/products/${id}`).pipe(
       map(product => this.withFallbacks(product))
     )
   }
 
   private withFallbacks(product: Partial<Product>): Product {
-    const name = product.name || 'SoleStreet Shoe'
-    const category = product.category || 'footwear'
+    const apiProduct = product as Partial<Product> & { final_price?: number }
+    const name = product.name || '7 Stars Product'
+    const category = product.category || 'supermarket'
+    const finalPrice = apiProduct.finalPrice ?? apiProduct.final_price ?? product.price
+    const fallbackUrl = product.url || this.fallbackImage(name, category)
+    const images = this.normalizeImages(product.images, fallbackUrl)
 
     return {
       id: Number(product.id) || 0,
       name,
       price: Number(product.price) || 0,
+      finalPrice: Number(finalPrice) || 0,
       category,
-      url: product.url || this.fallbackImage(name, category),
-      description: product.description || `${name} is a ${category} shoe from SoleStreet, selected for comfort, style, and everyday wear.`
+      category_id: product.category_id ?? null,
+      promotion_id: product.promotion_id ?? null,
+      promotion: product.promotion || null,
+      url: images[0],
+      images,
+      description: product.description || `${name} is a ${category} item from 7 Stars Mall, selected for quality, value, and everyday home needs.`,
+      created_at: product.created_at,
+      updated_at: product.updated_at
     }
+  }
+
+  private normalizeImages(images: unknown, fallbackUrl: string): string[] {
+    const list = Array.isArray(images) ? images : []
+    const normalized = list
+      .map(image => String(image || '').trim())
+      .filter(Boolean)
+
+    normalized.unshift(fallbackUrl)
+
+    return Array.from(new Set(normalized)).slice(0, 5)
+  }
+
+  private asList<T>(response: T[] | { value?: T[] } | null | undefined): T[] {
+    if (Array.isArray(response)) {
+      return response
+    }
+
+    if (Array.isArray(response?.value)) {
+      return response.value
+    }
+
+    return []
   }
 
   private toParams(query: ProductQuery): HttpParams {
@@ -83,13 +116,22 @@ export class ProductService {
   }
 
   private fallbackImage(name: string, category: string): string {
-    const label = encodeURIComponent(name)
-    const palette = category === 'running'
-      ? '37b878'
-      : category === 'boots'
-        ? 'd98435'
-        : '8268d8'
+    const images: Record<string, string> = {
+      fresh: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=900&q=80',
+      produce: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=900&q=80',
+      bakery: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=900&q=80',
+      dairy: 'https://images.unsplash.com/photo-1563636619-e9143da7973b?auto=format&fit=crop&w=900&q=80',
+      pantry: 'https://images.unsplash.com/photo-1556761223-4c4282c73f77?auto=format&fit=crop&w=900&q=80',
+      drinks: 'https://images.unsplash.com/photo-1523362628745-0c100150b504?auto=format&fit=crop&w=900&q=80',
+      household: 'https://images.unsplash.com/photo-1585421514284-efb74c2b69ba?auto=format&fit=crop&w=900&q=80',
+      cleaning: 'https://images.unsplash.com/photo-1585421514284-efb74c2b69ba?auto=format&fit=crop&w=900&q=80',
+      personal: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?auto=format&fit=crop&w=900&q=80',
+      frozen: 'https://images.unsplash.com/photo-1590080875515-8a3a8dc5735e?auto=format&fit=crop&w=900&q=80'
+    }
 
-    return `https://placehold.co/800x560/${palette}/111111?text=${label}`
+    return images[category.toLowerCase()] || 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=900&q=80'
   }
 }
+
+
+
