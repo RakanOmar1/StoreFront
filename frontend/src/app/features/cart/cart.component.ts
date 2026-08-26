@@ -5,6 +5,7 @@ import { RouterModule } from '@angular/router'
 import { CartService } from '../../core/services/cart.service'
 import { AuthService } from '../../core/services/auth.service'
 import { TranslatePipe } from '../../core/i18n/translate.pipe'
+import { TranslationService } from '../../core/i18n/translation.service'
 
 @Component({
   selector: 'app-cart',
@@ -42,6 +43,7 @@ import { TranslatePipe } from '../../core/i18n/translate.pipe'
                 {{ unitPrice(i.product) | currency }} {{ 'cart.each' | t }}
                 <em *ngIf="itemPromotionSavings(i) > 0">{{ 'cart.saved' | t }} {{ itemPromotionSavings(i) | currency }}</em>
               </span>
+              <span *ngIf="bundleLabel(i.product)" class="bundle-offer-line">{{ bundleLabel(i.product) }}</span>
             </div>
           </div>
 
@@ -56,7 +58,7 @@ import { TranslatePipe } from '../../core/i18n/translate.pipe'
             <button type="button" (click)="increase(i.product.id, i.quantity)">+</button>
           </div>
 
-          <strong class="line-total">{{ unitPrice(i.product) * i.quantity | currency }}</strong>
+          <strong class="line-total">{{ lineTotal(i) | currency }}</strong>
 
           <button class="remove-button icon-button" type="button" (click)="remove(i.product.id)" [attr.aria-label]="'cart.removeItem' | t">
             <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -85,8 +87,9 @@ import { TranslatePipe } from '../../core/i18n/translate.pipe'
                 {{ 'cart.qty' | t }} {{ i.quantity }} x {{ unitPrice(i.product) | currency }}
                 <em *ngIf="itemPromotionSavings(i) > 0">{{ 'cart.promo' | t }} -{{ itemPromotionSavings(i) | currency }}</em>
               </span>
+              <small *ngIf="bundleLabel(i.product)" class="bundle-offer-line">{{ bundleLabel(i.product) }}</small>
             </div>
-            <strong>{{ unitPrice(i.product) * i.quantity | currency }}</strong>
+            <strong>{{ lineTotal(i) | currency }}</strong>
           </div>
         </div>
 
@@ -131,7 +134,7 @@ export class CartComponent implements OnInit {
   promotionSavings = 0
   itemCount = 0
 
-  constructor(private cart: CartService, private auth: AuthService) {
+  constructor(private cart: CartService, private auth: AuthService, private i18n: TranslationService) {
     this.cart$.subscribe(() => {
       this.subtotal = this.cart.subtotal()
       this.originalSubtotal = this.cart.originalSubtotal()
@@ -161,9 +164,34 @@ export class CartComponent implements OnInit {
 
   remove(productId: number) { this.cart.removeItem(productId) }
 
-  itemPromotionSavings(item: { product: { price: number; finalPrice?: number }; quantity: number }): number {
-    const finalPrice = this.unitPrice(item.product)
-    return Math.max(0, (item.product.price - finalPrice) * item.quantity)
+  itemPromotionSavings(item: { product: any; quantity: number }): number {
+    return this.cart.itemPromotionSavings(item)
+  }
+
+  lineTotal(item: { product: any; quantity: number }): number {
+    return this.cart.lineTotal(item)
+  }
+
+  bundleLabel(product: any): string {
+    const promotion = product?.promotion
+
+    if (!promotion?.is_active || promotion.type !== 'BUNDLE') {
+      return ''
+    }
+
+    return this.i18n.translate('cart.bundleOffer', {
+      quantity: promotion.bundle_quantity || 0,
+      price: this.money(promotion.bundle_price || 0)
+    })
+  }
+
+  private money(value: number): string {
+    return new Intl.NumberFormat(undefined, {
+      style: 'currency',
+      currency: 'ILS',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(Number(value || 0))
   }
 
   unitPrice(product: { price: number; finalPrice?: number }): number {

@@ -40,7 +40,7 @@ type ProductTab = 'description' | 'specifications' | 'reviews' | 'shipping'
       <article class="premium-product-detail">
         <section class="detail-gallery" [attr.aria-label]="'store.productGallery' | t">
           <div class="main-product-image">
-            <span class="image-discount-badge" *ngIf="hasDiscount">-{{ discountLabel }}</span>
+            <span class="image-discount-badge" *ngIf="hasPromotion">{{ discountLabel }}</span>
             <button class="image-expand-button" type="button" [attr.aria-label]="'store.zoomProductImage' | t">
               <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M15 3h6v6" />
@@ -297,7 +297,15 @@ export class ProductDetailsComponent {
   }
 
   get hasDiscount(): boolean {
-    return !!this.product?.promotion?.is_active && this.savings >= 0.01
+    return !!this.product?.promotion?.is_active && this.product.promotion.type !== 'BUNDLE' && this.savings >= 0.01
+  }
+
+  get hasPromotion(): boolean {
+    return this.hasDiscount || this.isBundlePromotion
+  }
+
+  get isBundlePromotion(): boolean {
+    return !!this.product?.promotion?.is_active && this.product.promotion.type === 'BUNDLE'
   }
 
   get currentPrice(): number {
@@ -321,6 +329,10 @@ export class ProductDetailsComponent {
 
     if (!promo) {
       return ''
+    }
+
+    if (promo.type === 'BUNDLE') {
+      return `${promo.bundle_quantity || 1} for ${this.money(promo.bundle_price || 0)}`
     }
 
     return promo.type === 'PERCENT' ? `${promo.value}%` : this.money(this.savings)

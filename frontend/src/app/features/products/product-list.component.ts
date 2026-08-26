@@ -1,10 +1,11 @@
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, HostListener, OnInit } from '@angular/core'
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, ElementRef, HostListener, OnDestroy, OnInit, ViewChild } from '@angular/core'
 import { CommonModule } from '@angular/common'
 import { FormsModule } from '@angular/forms'
 import { RouterModule } from '@angular/router'
 import { ButtonModule } from 'primeng/button'
-import { CarouselModule } from 'primeng/carousel'
+import { Carousel, CarouselModule } from 'primeng/carousel'
 import { TagModule } from 'primeng/tag'
+import { Subject, takeUntil } from 'rxjs'
 import { ProductService } from '../../core/services/product.service'
 import { Product } from '../../shared/interfaces/product'
 import { CartService } from '../../core/services/cart.service'
@@ -51,14 +52,29 @@ type StoreProduct = Product & {
       </div>
     </section>
 
-    <section *ngIf="products.length > 0" class="brand-showcase">
+    <section
+      #departmentStrip
+      *ngIf="products.length > 0"
+      class="brand-showcase"
+      (mouseenter)="departmentStripPaused = true"
+      (mouseleave)="departmentStripPaused = false"
+      (touchstart)="departmentStripPaused = true"
+      (touchend)="departmentStripPaused = false"
+    >
       <button type="button" *ngFor="let brand of brandTiles; trackBy: trackBrand" (click)="openDepartment(brand)">
         <span><i [class]="brand.icon" aria-hidden="true"></i></span>
         <strong>{{ brand.labelKey | t }}</strong>
       </button>
     </section>
 
-    <section *ngIf="products.length > 0" class="featured-carousel-card market-featured-card">
+    <section
+      *ngIf="products.length > 0"
+      class="featured-carousel-card market-featured-card"
+      [class.featured-carousel-card--static]="!shouldRunFeaturedCarousel"
+      [attr.dir]="currentLang === 'ar' ? 'rtl' : 'ltr'"
+      (mouseenter)="pauseFeaturedCarousel()"
+      (mouseleave)="resumeFeaturedCarousel()"
+    >
       <div class="featured-carousel-heading">
         <div>
           <p class="eyebrow">{{ 'store.featuredPicks' | t }}</p>
@@ -68,11 +84,17 @@ type StoreProduct = Product & {
       </div>
 
       <p-carousel
+        #featuredCarousel
         [value]="products"
-        [numVisible]="3"
-        [numScroll]="3"
-        [circular]="false"
+        [numVisible]="4"
+        [numScroll]="1"
+        [circular]="shouldRunFeaturedCarousel"
+        [showNavigators]="shouldRunFeaturedCarousel"
+        [showIndicators]="shouldRunFeaturedCarousel"
+        [autoplayInterval]="shouldRunFeaturedCarousel ? featuredAutoplayDelay : 0"
         [responsiveOptions]="responsiveOptions"
+        [styleClass]="currentLang === 'ar' ? 'featured-carousel featured-carousel--rtl' : 'featured-carousel'"
+        (onPage)="scheduleFeaturedAutoplay()"
       >
         <ng-template let-product pTemplate="item">
           <article class="featured-product-card">
@@ -90,8 +112,8 @@ type StoreProduct = Product & {
             <div class="featured-product-bottom">
               <strong>{{ product.viewPrice | currency }}</strong>
               <span>
-                <p-button icon="pi pi-heart" severity="secondary" [outlined]="true" styleClass="featured-icon-button" />
-                <p-button icon="pi pi-shopping-cart" styleClass="featured-icon-button featured-cart-button" (onClick)="add(product)" />
+                <p-button icon="pi pi-heart" severity="secondary" [outlined]="true" styleClass="featured-icon-button" (onClick)="stopFeaturedAction($event)" />
+                <p-button icon="pi pi-shopping-cart" styleClass="featured-icon-button featured-cart-button" (onClick)="addFeatured(product, $event)" />
               </span>
             </div>
           </article>
@@ -133,10 +155,25 @@ type StoreProduct = Product & {
     ></app-product-grid>
 
     <div *ngIf="loadingMore" class="state-card loading-more">{{ 'store.loadingMore' | t }}</div>
+
+    <a *ngIf="cartItemCount > 0" class="mobile-cart-summary" routerLink="/cart">
+      <span>
+        <strong>{{ cartItemCount }} {{ 'common.items' | t }}</strong>
+        <small>{{ 'cart.shoppingBag' | t }}</small>
+      </span>
+      <b>{{ cartSubtotal | currency }}</b>
+    </a>
   </section>
   `
 })
-export class ProductListComponent implements OnInit {
+export class ProductListComponent implements OnInit, OnDestroy {
+  @ViewChild('featuredCarousel') featuredCarousel?: Carousel
+  @ViewChild('departmentStrip')
+  set departmentStrip(element: ElementRef<HTMLElement> | undefined) {
+    this.departmentStripElement = element
+    this.startDepartmentStrip()
+  }
+
   products: StoreProduct[] = []
   categories: string[] = []
   selectedCategory = 'all'
@@ -150,23 +187,30 @@ export class ProductListComponent implements OnInit {
   error: string | null = null
   addedProductId?: number
   cartQuantities: Record<number, number> = {}
+  cartItemCount = 0
+  cartSubtotal = 0
+  departmentStripPaused = false
   private readonly pageSize = 50
   private readonly filterDelayMs = 600
+  private departmentStripElement?: ElementRef<HTMLElement>
+  private departmentStripTimer?: number
+  private departmentScrollDirection = 1
+  private lastDepartmentScrollPosition?: number
+  readonly featuredAutoplayDelay = 2000
+  private readonly destroy$ = new Subject<void>()
   private filterTimer?: number
+  private featuredAutoplayRestartTimer?: number
   private pendingReset = false
+  private currentFeaturedVisible = 4
+  private isFeaturedCarouselHovered = false
   responsiveOptions = [
     {
-      breakpoint: '1200px',
-      numVisible: 3,
-      numScroll: 3
-    },
-    {
-      breakpoint: '900px',
+      breakpoint: '1023px',
       numVisible: 2,
-      numScroll: 2
+      numScroll: 1
     },
     {
-      breakpoint: '560px',
+      breakpoint: '639px',
       numVisible: 1,
       numScroll: 1
     }
@@ -193,8 +237,14 @@ export class ProductListComponent implements OnInit {
     return this.translations.currentLanguage
   }
 
+  get shouldRunFeaturedCarousel(): boolean {
+    return this.products.length > this.currentFeaturedVisible
+  }
+
   ngOnInit() {
-    this.cart.cart$.subscribe(items => {
+    this.updateFeaturedVisible()
+
+    this.cart.cart$.pipe(takeUntil(this.destroy$)).subscribe(items => {
       this.cartQuantities = items.reduce<Record<number, number>>((quantities, item) => {
         if (item.product.id) {
           quantities[item.product.id] = item.quantity
@@ -202,11 +252,13 @@ export class ProductListComponent implements OnInit {
 
         return quantities
       }, {})
+      this.cartItemCount = items.reduce((total, item) => total + item.quantity, 0)
+      this.cartSubtotal = items.reduce((total, item) => total + this.unitPrice(item.product) * item.quantity, 0)
       this.cdr.markForCheck()
     })
 
     this.loading = true
-    this.productService.getProductFilters().subscribe({
+    this.productService.getProductFilters().pipe(takeUntil(this.destroy$)).subscribe({
       next: filters => {
         this.categories = filters.categories
         this.maxProductPrice = filters.maxPrice
@@ -226,6 +278,45 @@ export class ProductListComponent implements OnInit {
 
   }
 
+  ngOnDestroy() {
+    window.clearTimeout(this.filterTimer)
+    window.clearTimeout(this.featuredAutoplayRestartTimer)
+    window.clearInterval(this.departmentStripTimer)
+    this.featuredCarousel?.stopAutoplay(false)
+    this.destroy$.next()
+    this.destroy$.complete()
+  }
+
+  private startDepartmentStrip(): void {
+    window.clearInterval(this.departmentStripTimer)
+
+    const strip = this.departmentStripElement?.nativeElement
+    if (!strip) {
+      return
+    }
+
+    this.departmentScrollDirection = this.currentLang === 'ar' ? -1 : 1
+    this.lastDepartmentScrollPosition = undefined
+    this.departmentStripTimer = window.setInterval(() => {
+      if (this.departmentStripPaused || strip.scrollWidth <= strip.clientWidth) {
+        return
+      }
+
+      const currentPosition = strip.scrollLeft
+      if (
+        this.lastDepartmentScrollPosition !== undefined &&
+        Math.abs(currentPosition - this.lastDepartmentScrollPosition) < 2
+      ) {
+        this.departmentScrollDirection *= -1
+      }
+
+      this.lastDepartmentScrollPosition = currentPosition
+      const tile = strip.querySelector<HTMLElement>('button')
+      const distance = (tile?.offsetWidth || 132) + 10
+      strip.scrollBy({ left: distance * this.departmentScrollDirection, behavior: 'smooth' })
+    }, 1000)
+  }
+
   @HostListener('window:scroll')
   onScroll() {
     const nearBottom = window.innerHeight + window.scrollY >= document.body.offsetHeight - 500
@@ -233,6 +324,11 @@ export class ProductListComponent implements OnInit {
     if (nearBottom) {
       this.loadProducts(false)
     }
+  }
+
+  @HostListener('window:resize')
+  onResize() {
+    this.updateFeaturedVisible()
   }
 
   selectCategory(category: string) {
@@ -335,7 +431,7 @@ export class ProductListComponent implements OnInit {
       maxPrice: this.priceLimit,
       limit: this.pageSize,
       offset: reset ? 0 : this.products.length
-    }).subscribe({
+    }).pipe(takeUntil(this.destroy$)).subscribe({
       next: products => {
         const mappedProducts = products.map(product => this.toStoreProduct(product))
         this.products = reset ? mappedProducts : [...this.products, ...mappedProducts]
@@ -374,6 +470,57 @@ export class ProductListComponent implements OnInit {
         this.cdr.markForCheck()
       }
     }, 1200)
+  }
+
+  addFeatured(product: Product, event?: Event) {
+    event?.stopPropagation()
+    this.add(product)
+    this.scheduleFeaturedAutoplay()
+  }
+
+  stopFeaturedAction(event?: Event) {
+    event?.stopPropagation()
+    this.scheduleFeaturedAutoplay()
+  }
+
+  pauseFeaturedCarousel() {
+    this.isFeaturedCarouselHovered = true
+    window.clearTimeout(this.featuredAutoplayRestartTimer)
+    this.featuredCarousel?.stopAutoplay(false)
+  }
+
+  resumeFeaturedCarousel() {
+    this.isFeaturedCarouselHovered = false
+    this.startFeaturedAutoplay()
+  }
+
+  scheduleFeaturedAutoplay() {
+    window.clearTimeout(this.featuredAutoplayRestartTimer)
+    this.featuredAutoplayRestartTimer = window.setTimeout(() => this.startFeaturedAutoplay(), 750)
+  }
+
+  private startFeaturedAutoplay() {
+    if (this.isFeaturedCarouselHovered || !this.shouldRunFeaturedCarousel || this.featuredCarousel?.isPlaying()) {
+      return
+    }
+
+    this.featuredCarousel?.startAutoplay()
+  }
+
+  private updateFeaturedVisible() {
+    const width = window.innerWidth
+    this.currentFeaturedVisible = width >= 1024 ? 4 : width >= 640 ? 2 : 1
+
+    if (!this.shouldRunFeaturedCarousel) {
+      window.clearTimeout(this.featuredAutoplayRestartTimer)
+      this.featuredCarousel?.stopAutoplay(false)
+    }
+
+    this.cdr.markForCheck()
+  }
+
+  private unitPrice(product: Product): number {
+    return Number(product.finalPrice ?? product.price)
   }
 
   private toStoreProduct(product: Product): StoreProduct {

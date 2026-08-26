@@ -103,13 +103,14 @@ Chart.register(
             </div>
           </div>
 
-          <div class="chart-state" *ngIf="revenueLoading">{{ 'admin.loadingRevenue' | t }}</div>
+          <div class="chart-state compact" *ngIf="revenueLoading && !revenueData">{{ 'admin.loadingRevenue' | t }}</div>
+          <div class="chart-refresh-badge" *ngIf="revenueLoading && revenueData">{{ 'common.refresh' | t }}</div>
           <div class="chart-state error" *ngIf="!revenueLoading && revenueError">
             <span>{{ revenueError | t }}</span>
             <button type="button" (click)="loadRevenue()">{{ 'common.retry' | t }}</button>
           </div>
           <div class="chart-state" *ngIf="!revenueLoading && !revenueError && revenueData && !revenueData.totalRevenue">{{ 'admin.noRevenueData' | t }}</div>
-          <div class="chart-container" [class.is-hidden]="revenueLoading || revenueError || !revenueData?.totalRevenue">
+          <div class="chart-container" [class.is-hidden]="(!revenueData?.totalRevenue && !revenueLoading) || revenueError">
               <canvas #revenueCanvas [attr.aria-label]="'admin.revenueChartLabel' | t"></canvas>
           </div>
         </article>
@@ -258,7 +259,6 @@ export class AdminAnalyticsComponent implements OnInit, AfterViewInit, OnDestroy
     if (this.revenueLoading) return
     this.revenueLoading = true
     this.revenueError = ''
-    this.revenueChart?.destroy()
 
     this.analytics.getRevenue(this.selectedRevenuePeriod).pipe(
       timeout(10000),
@@ -271,10 +271,10 @@ export class AdminAnalyticsComponent implements OnInit, AfterViewInit, OnDestroy
       next: response => {
         this.revenueData = response
         this.cdr.detectChanges()
+        this.revenueChart?.destroy()
         this.renderRevenueChart()
       },
       error: () => {
-        this.revenueData = null
         this.revenueError = 'admin.loadRevenueAnalyticsError'
       }
     })

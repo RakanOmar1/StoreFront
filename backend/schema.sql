@@ -23,6 +23,8 @@ CREATE TABLE IF NOT EXISTS promotions (
   name VARCHAR(100) NOT NULL,
   type VARCHAR(20) NOT NULL,
   value NUMERIC(10, 2) NOT NULL,
+  bundle_quantity INTEGER,
+  bundle_price NUMERIC(10, 2),
   is_active BOOLEAN NOT NULL DEFAULT TRUE
 );
 

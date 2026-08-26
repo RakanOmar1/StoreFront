@@ -701,8 +701,10 @@ export class AdminCrudPageComponent implements OnInit, CanLeaveWithUnsavedChange
       return [
         { key: 'id', label: 'Promotion ID', type: 'number', readonly: true },
         { key: 'name', label: 'Promotion name', type: 'text', required: true },
-        { key: 'type', label: 'Promotion type', type: 'select', required: true, options: ['FIXED', 'PERCENT'] },
-        { key: 'value', label: 'Value', type: 'number', required: true },
+        { key: 'type', label: 'Promotion type', type: 'select', required: true, options: ['FIXED', 'PERCENT', 'BUNDLE'] },
+        { key: 'value', label: 'Value', type: 'number', required: true, help: 'Used for fixed amount or percent promotions.' },
+        { key: 'bundle_quantity', label: 'Required quantity', type: 'number', required: true, help: 'How many units of one selected product trigger the bundle price. Example: 3.' },
+        { key: 'bundle_price', label: 'Price for quantity', type: 'number', required: true, help: 'Total price for that quantity. Example: 3 items for ₪10.' },
         { key: 'is_active', label: 'Promotion status', type: 'select', options: ['true', 'false'] },
         { key: 'productIds', label: 'Applicable products', type: 'multiselect', required: true }
       ]
@@ -739,11 +741,30 @@ export class AdminCrudPageComponent implements OnInit, CanLeaveWithUnsavedChange
   }
 
   get formFields(): CrudField[] {
-    return this.formFieldsList
+    return this.visiblePromotionFields(this.formFieldsList)
   }
 
   get previewFields(): CrudField[] {
-    return this.previewFieldsList
+    return this.visiblePromotionFields(this.previewFieldsList)
+  }
+
+  private visiblePromotionFields(fields: CrudField[]): CrudField[] {
+    if (this.entity !== 'promotions') {
+      return fields
+    }
+
+    const isBundle = this.form['type'] === 'BUNDLE'
+    return fields.filter(field => {
+      if (field.key === 'value') {
+        return !isBundle
+      }
+
+      if (field.key === 'bundle_quantity' || field.key === 'bundle_price') {
+        return isBundle
+      }
+
+      return true
+    })
   }
 
   displayValue(key: string): string {
@@ -1394,7 +1415,7 @@ export class AdminCrudPageComponent implements OnInit, CanLeaveWithUnsavedChange
       return { id: '', name: '', description: '', created_at: '', updated_at: '' }
     }
     if (this.entity === 'promotions') {
-      return { id: '', name: '', type: 'PERCENT', value: '', is_active: 'true', productIds: [], categoryIds: [], products: [] }
+      return { id: '', name: '', type: 'PERCENT', value: '', bundle_quantity: '', bundle_price: '', is_active: 'true', productIds: [], categoryIds: [], products: [] }
     }
     return { id: '', name: '', price: '', category_id: '', active_promotions: '', images: ['', '', '', '', ''], description: '', created_at: '', updated_at: '' }
   }
@@ -1428,6 +1449,10 @@ export class AdminCrudPageComponent implements OnInit, CanLeaveWithUnsavedChange
     }
     if (this.entity === 'promotions') {
       payload['value'] = Number(payload['value']) || 0
+      payload['bundle_quantity'] = payload['type'] === 'BUNDLE' ? Number(payload['bundle_quantity']) || 0 : null
+      payload['bundle_price'] = payload['type'] === 'BUNDLE' ? Number(payload['bundle_price']) || 0 : null
+      payload['bundleQuantity'] = payload['bundle_quantity']
+      payload['bundlePrice'] = payload['bundle_price']
       payload['is_active'] = payload['is_active'] === true || payload['is_active'] === 'true'
       payload['productIds'] = Array.from(new Set((payload['productIds'] || []).map((id: unknown) => Number(id)).filter((id: number) => Number.isInteger(id) && id > 0)))
       payload['categoryIds'] = Array.from(new Set((payload['categoryIds'] || []).map((id: unknown) => Number(id)).filter((id: number) => Number.isInteger(id) && id > 0)))

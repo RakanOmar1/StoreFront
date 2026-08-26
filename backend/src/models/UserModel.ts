@@ -13,11 +13,45 @@ export class UserModel {
       lastname: user.lastname,
       email: user.email,
       phone: user.phone,
+      address: user.address,
+      city: user.city,
+      avatar_url: user.avatar_url,
       role: user.role || 'CUSTOMER',
       is_active: user.is_active ?? true,
       created_at: user.created_at,
       updated_at: user.updated_at
     }
+  }
+
+  async showCurrent(id: number): Promise<PublicUser> {
+    const result = await pool.query('SELECT id, name, firstname, lastname, email, phone, address, city, avatar_url, role, is_active, created_at, updated_at FROM users WHERE id = $1', [id])
+    return result.rows[0]
+  }
+
+  async updateCurrent(id: number, input: Partial<User>): Promise<PublicUser> {
+    const existing = await this.showCurrent(id)
+    const name = String(input.name ?? existing.name ?? '').trim()
+    const parts = name.split(/\s+/).filter(Boolean)
+    const firstname = parts[0] || existing.firstname
+    const lastname = parts.slice(1).join(' ') || existing.lastname
+    const result = await pool.query(
+      `UPDATE users SET name=$1, firstname=$2, lastname=$3, phone=$4, address=$5, city=$6, updated_at=NOW() WHERE id=$7
+       RETURNING id, name, firstname, lastname, email, phone, address, city, avatar_url, role, is_active, created_at, updated_at`,
+      [name || existing.name, firstname, lastname, input.phone ?? existing.phone, input.address ?? existing.address, input.city ?? existing.city, id]
+    )
+    return result.rows[0]
+  }
+
+  async updateAvatar(id: number, avatarUrl: string | null): Promise<PublicUser> {
+    await pool.query('UPDATE users SET avatar_url=$1, updated_at=NOW() WHERE id=$2', [avatarUrl, id])
+    return this.showCurrent(id)
+  }
+
+  async changePassword(id: number, currentPassword: string, newPassword: string): Promise<boolean> {
+    const result = await pool.query('SELECT password_digest FROM users WHERE id=$1', [id])
+    if (!result.rows[0]?.password_digest || !this.authService.comparePassword(currentPassword, result.rows[0].password_digest)) return false
+    await pool.query('UPDATE users SET password_digest=$1, updated_at=NOW() WHERE id=$2', [this.authService.hashPassword(newPassword), id])
+    return true
   }
 
   async index(): Promise<PublicUser[]> {

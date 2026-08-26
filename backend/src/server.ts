@@ -11,6 +11,7 @@ import orderRoutes from './routes/orderRoutes'
 import productRoutes from './routes/productRoutes'
 import promotionRoutes from './routes/promotionRoutes'
 import userRoutes from './routes/userRoutes'
+import profileRoutes from './routes/profileRoutes'
 import { ensureCommerceSchema } from './seed/commerceSchema'
 import { ensureDefaultAdmin } from './seed/defaultAdmin'
 
@@ -18,6 +19,7 @@ const app: express.Application = express()
 const port = Number(process.env.PORT) || 3000
 
 app.use(bodyParser.json())
+app.use('/uploads', express.static('uploads'))
 
 app.use((req: Request, res: Response, next) => {
   res.header('Access-Control-Allow-Origin', '*')
@@ -40,6 +42,7 @@ app.use('/admin/analytics', adminAnalyticsRoutes)
 app.use('/admin/chatter', activityLogRoutes)
 app.use('/auth', authRoutes)
 app.use('/users', userRoutes)
+app.use('/profile', profileRoutes)
 app.use('/products', productRoutes)
 app.use('/categories', categoryRoutes)
 app.use('/promotions', promotionRoutes)
@@ -49,6 +52,7 @@ app.use('/api/auth', authRoutes)
 app.use('/api/admin/analytics', adminAnalyticsRoutes)
 app.use('/api/admin/chatter', activityLogRoutes)
 app.use('/api/users', userRoutes)
+app.use('/api/profile', profileRoutes)
 app.use('/api/products', productRoutes)
 app.use('/api/categories', categoryRoutes)
 app.use('/api/promotions', promotionRoutes)

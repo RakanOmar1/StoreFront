@@ -21,29 +21,49 @@ import { LanguageSwitcherComponent } from '../language-switcher/language-switche
         </a>
       </strong>
       <nav>
-        <a *ngIf="!(isAuthenticated$ | async)" routerLink="/cart" class="nav-link nav-pill">
-          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M5 5h2l1.5 9.5h8.7L20 8H8" />
-            <circle cx="10" cy="19" r="1.5" />
-            <circle cx="17" cy="19" r="1.5" />
-          </svg>
-          {{ 'nav.cart' | t }} ({{ cartCount$ | async }})
-        </a>
-        <a *ngIf="!(isAuthenticated$ | async)" routerLink="/auth/login" class="nav-link nav-pill">
-          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M10 17v2H5V5h5v2" />
-            <path d="M14 8l4 4-4 4" />
-            <path d="M8 12h10" />
-          </svg>
-          {{ 'nav.login' | t }}
-        </a>
-        <a *ngIf="!(isAuthenticated$ | async)" routerLink="/auth/register" class="nav-link nav-pill signup-link">
-          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M12 5v14" />
-            <path d="M5 12h14" />
-          </svg>
-          {{ 'nav.signup' | t }}
-        </a>
+        <div *ngIf="!(isAuthenticated$ | async)" class="guest-menu-wrap">
+          <button
+            type="button"
+            class="guest-menu-trigger"
+            aria-haspopup="menu"
+            [attr.aria-expanded]="menuOpen"
+            (click)="toggleMenu($event)"
+          >
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 7h16M4 12h16M4 17h16" />
+            </svg>
+            {{ 'nav.menu' | t }}
+            <svg class="menu-chevron" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="m7 10 5 5 5-5" />
+            </svg>
+          </button>
+
+          <div *ngIf="menuOpen" class="account-menu guest-menu" role="menu">
+            <a routerLink="/cart" role="menuitem" (click)="closeMenu()">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M5 5h2l1.5 9.5h8.7L20 8H8" />
+                <circle cx="10" cy="19" r="1.5" />
+                <circle cx="17" cy="19" r="1.5" />
+              </svg>
+              {{ 'nav.cart' | t }} ({{ cartCount$ | async }})
+            </a>
+            <a routerLink="/auth/login" role="menuitem" (click)="closeMenu()">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M10 17v2H5V5h5v2" />
+                <path d="M14 8l4 4-4 4" />
+                <path d="M8 12h10" />
+              </svg>
+              {{ 'nav.login' | t }}
+            </a>
+            <a routerLink="/auth/register" role="menuitem" (click)="closeMenu()">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 5v14" />
+                <path d="M5 12h14" />
+              </svg>
+              {{ 'nav.signup' | t }}
+            </a>
+          </div>
+        </div>
         <app-language-switcher />
         <div *ngIf="isAuthenticated$ | async" class="account-menu-wrap">
           <button
@@ -146,6 +166,7 @@ export class HeaderComponent {
   logout() {
     this.closeMenu()
     this.auth.logout().subscribe(() => {
+      this.cart.clear()
       this.router.navigate(['/auth/login'])
     })
   }

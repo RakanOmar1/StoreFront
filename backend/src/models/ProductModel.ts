@@ -10,6 +10,8 @@ export class ProductModel {
       pr.name AS promotion_name,
       pr.type AS promotion_type,
       pr.value AS promotion_value,
+      pr.bundle_quantity AS promotion_bundle_quantity,
+      pr.bundle_price AS promotion_bundle_price,
       pr.is_active AS promotion_is_active
     FROM products p
     LEFT JOIN categories c ON c.id = p.category_id
@@ -151,13 +153,17 @@ export class ProductModel {
           name: row.promotion_name,
           type: row.promotion_type,
           value: Number(row.promotion_value),
+          bundle_quantity: row.promotion_bundle_quantity ? Number(row.promotion_bundle_quantity) : null,
+          bundle_price: row.promotion_bundle_price ? Number(row.promotion_bundle_price) : null,
           is_active: row.promotion_is_active
         }
       : null
     let finalPrice = price
 
     if (promotion?.is_active) {
-      finalPrice = promotion.type === 'FIXED'
+      finalPrice = promotion.type === 'BUNDLE'
+        ? price
+        : promotion.type === 'FIXED'
         ? price - promotion.value
         : price - ((price * promotion.value) / 100)
     }

@@ -12,7 +12,7 @@ import { TranslatePipe } from '../../core/i18n/translate.pipe'
   template: `
     <article
       class="product-card"
-      [class.has-promotion]="hasDiscount"
+      [class.has-promotion]="hasPromotion"
       role="link"
       tabindex="0"
       (click)="openProduct()"
@@ -21,7 +21,7 @@ import { TranslatePipe } from '../../core/i18n/translate.pipe'
       [attr.aria-label]="product.name"
     >
       <div class="product-hero" [ngClass]="toneClass">
-        <span class="product-status">{{ hasDiscount ? promotionLabel : ('store.newArrivals' | t) }}</span>
+        <span class="product-status">{{ hasPromotion ? promotionLabel : ('store.newArrivals' | t) }}</span>
         <button class="favorite-button" type="button" [attr.aria-label]="'store.addToWishlist' | t" (click)="$event.stopPropagation()">
           <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
             <path d="M20.8 4.6a5.4 5.4 0 0 0-7.6 0L12 5.8l-1.2-1.2a5.4 5.4 0 0 0-7.6 7.6L12 21l8.8-8.8a5.4 5.4 0 0 0 0-7.6Z" />
@@ -92,7 +92,15 @@ export class ProductCardComponent implements OnChanges {
   }
 
   get hasDiscount(): boolean {
-    return !!this.product.promotion?.is_active && this.savings >= 0.01
+    return !!this.product.promotion?.is_active && this.product.promotion.type !== 'BUNDLE' && this.savings >= 0.01
+  }
+
+  get hasPromotion(): boolean {
+    return this.hasDiscount || this.isBundlePromotion
+  }
+
+  get isBundlePromotion(): boolean {
+    return !!this.product.promotion?.is_active && this.product.promotion.type === 'BUNDLE'
   }
 
   get promotionLabel(): string {
@@ -100,6 +108,10 @@ export class ProductCardComponent implements OnChanges {
 
     if (!promo) {
       return 'Offer'
+    }
+
+    if (promo.type === 'BUNDLE') {
+      return `${promo.bundle_quantity || 1} for ${this.money(promo.bundle_price || 0)}`
     }
 
     return promo.type === 'PERCENT' ? `${promo.value}% off` : `${this.money(this.savings)} off`

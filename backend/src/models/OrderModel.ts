@@ -94,7 +94,7 @@ export class OrderModel {
       }
 
       const items = await client.query(
-        `SELECT ci.product_id, ci.quantity, p.price, pr.type, pr.value, pr.is_active
+        `SELECT ci.product_id, ci.quantity, p.price, pr.type, pr.value, pr.bundle_quantity, pr.bundle_price, pr.is_active
          FROM cart_items ci
          JOIN products p ON p.id = ci.product_id
          LEFT JOIN promotions pr ON pr.id = p.promotion_id
@@ -108,9 +108,19 @@ export class OrderModel {
 
       let total = 0
       const orderItems = items.rows.map(item => {
-        const price = this.finalPrice(Number(item.price), item.type, Number(item.value), item.is_active)
-        total += price * Number(item.quantity)
-        return { productId: item.product_id, quantity: item.quantity, price }
+        const quantity = Number(item.quantity)
+        const lineTotal = this.lineTotal(
+          Number(item.price),
+          quantity,
+          item.type,
+          Number(item.value),
+          item.is_active,
+          item.bundle_quantity ? Number(item.bundle_quantity) : null,
+          item.bundle_price ? Number(item.bundle_price) : null
+        )
+        const price = quantity > 0 ? lineTotal / quantity : 0
+        total += lineTotal
+        return { productId: item.product_id, quantity, price }
       })
 
       const order = await client.query(
@@ -162,5 +172,23 @@ export class OrderModel {
         : price
 
     return Math.max(0, discounted)
+  }
+
+  private lineTotal(
+    price: number,
+    quantity: number,
+    type?: string,
+    value?: number,
+    isActive?: boolean,
+    bundleQuantity?: number | null,
+    bundlePrice?: number | null
+  ): number {
+    if (!isActive || type !== 'BUNDLE' || !bundleQuantity || bundleQuantity < 2 || !bundlePrice) {
+      return this.finalPrice(price, type, value, isActive) * quantity
+    }
+
+    const bundles = Math.floor(quantity / bundleQuantity)
+    const remainder = quantity % bundleQuantity
+    return Math.max(0, (bundles * bundlePrice) + (remainder * price))
   }
 }

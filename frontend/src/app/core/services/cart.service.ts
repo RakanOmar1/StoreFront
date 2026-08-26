@@ -134,7 +134,7 @@ export class CartService {
   }
 
   subtotal(): number {
-    return this.items.reduce((s, i) => s + this.unitPrice(i.product) * i.quantity, 0)
+    return this.items.reduce((s, i) => s + this.lineTotal(i), 0)
   }
 
   originalSubtotal(): number {
@@ -143,6 +143,14 @@ export class CartService {
 
   promotionSavings(): number {
     return Math.max(0, this.originalSubtotal() - this.subtotal())
+  }
+
+  lineTotal(item: CartItem): number {
+    return this.discountedLineTotal(item.product, item.quantity)
+  }
+
+  itemPromotionSavings(item: CartItem): number {
+    return Math.max(0, (item.product.price * item.quantity) - this.lineTotal(item))
   }
 
   itemCount(): number {
@@ -200,5 +208,23 @@ export class CartService {
 
   private unitPrice(product: { price: number; finalPrice?: number }): number {
     return Number(product.finalPrice ?? product.price)
+  }
+
+  private discountedLineTotal(product: Product, quantity: number): number {
+    const promotion = product.promotion
+
+    if (
+      promotion?.is_active &&
+      promotion.type === 'BUNDLE' &&
+      promotion.bundle_quantity &&
+      promotion.bundle_quantity > 1 &&
+      promotion.bundle_price
+    ) {
+      const bundles = Math.floor(quantity / promotion.bundle_quantity)
+      const remainder = quantity % promotion.bundle_quantity
+      return Math.max(0, (bundles * promotion.bundle_price) + (remainder * product.price))
+    }
+
+    return this.unitPrice(product) * quantity
   }
 }

@@ -7,7 +7,7 @@ exports.up = function (db) {
     END $$;
 
     DO $$ BEGIN
-      CREATE TYPE promotion_type AS ENUM ('FIXED', 'PERCENT');
+      CREATE TYPE promotion_type AS ENUM ('FIXED', 'PERCENT', 'BUNDLE');
     EXCEPTION
       WHEN duplicate_object THEN null;
     END $$;
@@ -71,6 +71,8 @@ exports.up = function (db) {
       name VARCHAR(100) NOT NULL,
       type promotion_type NOT NULL,
       value NUMERIC(10, 2) NOT NULL,
+      bundle_quantity INTEGER,
+      bundle_price NUMERIC(10, 2),
       is_active BOOLEAN NOT NULL DEFAULT TRUE
     );
 

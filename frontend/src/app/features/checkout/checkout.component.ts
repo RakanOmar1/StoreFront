@@ -97,10 +97,12 @@ import { TranslationService } from '../../core/i18n/translation.service'
 
         <div class="summary-item" *ngFor="let item of items">
           <span>
-            {{ item.product.name }} x {{ item.quantity }}
+            <strong>{{ item.product.name }}</strong>
+            <small>{{ 'cart.qty' | t }} {{ item.quantity }} x {{ unitPrice(item.product) | currency }}</small>
             <em *ngIf="itemPromotionSavings(item) > 0">Promo -{{ itemPromotionSavings(item) | currency }}</em>
+            <small *ngIf="bundleLabel(item.product)" class="bundle-offer-line">{{ bundleLabel(item.product) }}</small>
           </span>
-          <strong>{{ unitPrice(item.product) * item.quantity | currency }}</strong>
+          <strong>{{ lineTotal(item) | currency }}</strong>
         </div>
 
         <div class="summary-row summary-divider">
@@ -196,9 +198,34 @@ export class CheckoutComponent {
     return [this.user?.firstname, this.user?.lastname].filter(Boolean).join(' ')
   }
 
-  itemPromotionSavings(item: { product: { price: number; finalPrice?: number }; quantity: number }): number {
-    const finalPrice = this.unitPrice(item.product)
-    return Math.max(0, (item.product.price - finalPrice) * item.quantity)
+  itemPromotionSavings(item: { product: any; quantity: number }): number {
+    return this.cart.itemPromotionSavings(item)
+  }
+
+  lineTotal(item: { product: any; quantity: number }): number {
+    return this.cart.lineTotal(item)
+  }
+
+  bundleLabel(product: any): string {
+    const promotion = product?.promotion
+
+    if (!promotion?.is_active || promotion.type !== 'BUNDLE') {
+      return ''
+    }
+
+    return this.i18n.translate('cart.bundleOffer', {
+      quantity: promotion.bundle_quantity || 0,
+      price: this.money(promotion.bundle_price || 0)
+    })
+  }
+
+  private money(value: number): string {
+    return new Intl.NumberFormat(undefined, {
+      style: 'currency',
+      currency: 'ILS',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(Number(value || 0))
   }
 
   unitPrice(product: { price: number; finalPrice?: number }): number {

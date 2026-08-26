@@ -11,8 +11,10 @@ export type Product = {
   promotion?: {
     id: number
     name: string
-    type: 'FIXED' | 'PERCENT'
+    type: 'FIXED' | 'PERCENT' | 'BUNDLE'
     value: number
+    bundle_quantity?: number | null
+    bundle_price?: number | null
     is_active: boolean
   } | null
   finalPrice?: number

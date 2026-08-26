@@ -5,6 +5,9 @@ export type User = {
   lastname: string
   email?: string | null
   phone?: string | null
+  address?: string | null
+  city?: string | null
+  avatar_url?: string | null
   role?: 'MANAGER' | 'ADMIN' | 'DELIVERY' | 'CUSTOMER'
   is_active?: boolean
   created_at?: Date
@@ -20,6 +23,9 @@ export type PublicUser = {
   lastname: string
   email?: string | null
   phone?: string | null
+  address?: string | null
+  city?: string | null
+  avatar_url?: string | null
   role?: 'MANAGER' | 'ADMIN' | 'DELIVERY' | 'CUSTOMER'
   is_active?: boolean
   created_at?: Date

@@ -24,9 +24,10 @@ export class PromotionModel {
       await client.query('BEGIN')
       const productIds = await this.resolvedProductIds(client, promotion.productIds || [], promotion.categoryIds || [])
       const categoryIds = await this.validCategoryIds(client, promotion.categoryIds || [])
+      const normalized = this.normalizePromotion(promotion)
       const result = await client.query(
-        'INSERT INTO promotions (name, type, value, is_active) VALUES ($1, $2, $3, $4) RETURNING *',
-        [promotion.name, promotion.type, promotion.value, promotion.is_active ?? true]
+        'INSERT INTO promotions (name, type, value, bundle_quantity, bundle_price, is_active) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+        [normalized.name, normalized.type, normalized.value, normalized.bundle_quantity, normalized.bundle_price, normalized.is_active]
       )
       await this.assignCategories(client, result.rows[0].id, categoryIds)
       await this.assignProducts(client, result.rows[0].id, productIds)
@@ -46,9 +47,10 @@ export class PromotionModel {
       await client.query('BEGIN')
       const productIds = await this.resolvedProductIds(client, promotion.productIds || [], promotion.categoryIds || [])
       const categoryIds = await this.validCategoryIds(client, promotion.categoryIds || [])
+      const normalized = this.normalizePromotion(promotion)
       const result = await client.query(
-        'UPDATE promotions SET name = $1, type = $2, value = $3, is_active = $4 WHERE id = $5 RETURNING *',
-        [promotion.name, promotion.type, promotion.value, promotion.is_active ?? true, id]
+        'UPDATE promotions SET name = $1, type = $2, value = $3, bundle_quantity = $4, bundle_price = $5, is_active = $6 WHERE id = $7 RETURNING *',
+        [normalized.name, normalized.type, normalized.value, normalized.bundle_quantity, normalized.bundle_price, normalized.is_active, id]
       )
       if (!result.rows[0]) {
         await client.query('ROLLBACK')
@@ -177,6 +179,28 @@ export class PromotionModel {
         'UPDATE products SET promotion_id = $1, updated_at = NOW() WHERE id = ANY($2::BIGINT[])',
         [promotionId, productIds]
       )
+    }
+  }
+
+  private normalizePromotion(promotion: Promotion): Promotion {
+    const type = promotion.type
+    const isBundle = type === 'BUNDLE'
+    const payload = promotion as Promotion & { bundleQuantity?: number | null; bundlePrice?: number | null }
+    const bundleQuantityValue = payload.bundle_quantity ?? payload.bundleQuantity
+    const bundlePriceValue = payload.bundle_price ?? payload.bundlePrice
+    const bundleQuantity = isBundle ? Math.max(1, Math.floor(Number(bundleQuantityValue) || 0)) : null
+    const bundlePrice = isBundle ? Math.max(0, Number(bundlePriceValue) || 0) : null
+
+    if (isBundle && (!bundleQuantity || bundleQuantity < 2 || !bundlePrice)) {
+      throw new Error('Bundle promotions require quantity and price')
+    }
+
+    return {
+      ...promotion,
+      value: isBundle ? 0 : Number(promotion.value) || 0,
+      bundle_quantity: bundleQuantity,
+      bundle_price: bundlePrice,
+      is_active: promotion.is_active ?? true
     }
   }
 }

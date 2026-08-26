@@ -78,7 +78,7 @@ interface DashboardCategorySale {
           <app-admin-analytics />
 
           <section class="dashboard-commerce-grid" *ngIf="!loading">
-            <article class="dashboard-commerce-card">
+            <article class="dashboard-commerce-card dashboard-top-products-card">
               <header>
                 <div>
                   <h2>Top Products</h2>
@@ -94,11 +94,12 @@ interface DashboardCategorySale {
                 </select>
               </header>
 
-              <div class="dashboard-commerce-state" *ngIf="commerceLoading">Loading commerce summary...</div>
+              <div class="dashboard-commerce-state" *ngIf="commerceLoading && !topProductRows.length">Loading commerce summary...</div>
+              <div class="chart-refresh-badge" *ngIf="commerceLoading && topProductRows.length">Updating</div>
               <div class="dashboard-commerce-state error" *ngIf="!commerceLoading && commerceError">{{ commerceError }}</div>
               <div class="dashboard-commerce-state" *ngIf="!commerceLoading && !commerceError && !topProductRows.length">No product sales yet.</div>
 
-              <div class="dashboard-product-list" *ngIf="!commerceLoading && !commerceError && topProductRows.length">
+              <div class="dashboard-product-list" *ngIf="!commerceError && topProductRows.length">
                 <div class="dashboard-product-row" *ngFor="let product of topProductRows; trackBy: trackTopProduct">
                   <span class="dashboard-product-icon">{{ product.icon }}</span>
                   <div>
@@ -113,7 +114,7 @@ interface DashboardCategorySale {
               </div>
             </article>
 
-            <article class="dashboard-commerce-card">
+            <article class="dashboard-commerce-card dashboard-category-card">
               <header>
                 <div>
                   <h2>Sales by Category</h2>
@@ -121,11 +122,12 @@ interface DashboardCategorySale {
                 </div>
               </header>
 
-              <div class="dashboard-commerce-state" *ngIf="commerceLoading">Loading category sales...</div>
+              <div class="dashboard-commerce-state" *ngIf="commerceLoading && !categorySaleRows.length">Loading category sales...</div>
+              <div class="chart-refresh-badge" *ngIf="commerceLoading && categorySaleRows.length">Updating</div>
               <div class="dashboard-commerce-state error" *ngIf="!commerceLoading && commerceError">{{ commerceError }}</div>
               <div class="dashboard-commerce-state" *ngIf="!commerceLoading && !commerceError && !categorySaleRows.length">No category sales yet.</div>
 
-              <div class="dashboard-category-list" *ngIf="!commerceLoading && !commerceError && categorySaleRows.length">
+              <div class="dashboard-category-list" *ngIf="!commerceError && categorySaleRows.length">
                 <div class="dashboard-category-row" *ngFor="let category of categorySaleRows; trackBy: trackCategorySale">
                   <div class="dashboard-category-topline">
                     <span><em>{{ category.icon }}</em>{{ category.name }}</span>

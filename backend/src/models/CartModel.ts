@@ -72,6 +72,8 @@ export class CartModel {
         pr.name AS promotion_name,
         pr.type AS promotion_type,
         pr.value AS promotion_value,
+        pr.bundle_quantity AS promotion_bundle_quantity,
+        pr.bundle_price AS promotion_bundle_price,
         pr.is_active AS promotion_is_active
        FROM cart_items ci
        JOIN products p ON p.id = ci.product_id
@@ -90,6 +92,8 @@ export class CartModel {
             name: row.promotion_name,
             type: row.promotion_type,
             value: Number(row.promotion_value),
+            bundle_quantity: row.promotion_bundle_quantity ? Number(row.promotion_bundle_quantity) : null,
+            bundle_price: row.promotion_bundle_price ? Number(row.promotion_bundle_price) : null,
             is_active: row.promotion_is_active
           }
         : null
@@ -117,7 +121,7 @@ export class CartModel {
   }
 
   private finalPrice(price: number, type?: string, value?: number, isActive?: boolean): number {
-    if (!isActive || !type || !value) {
+    if (!isActive || !type || type === 'BUNDLE' || !value) {
       return price
     }
 

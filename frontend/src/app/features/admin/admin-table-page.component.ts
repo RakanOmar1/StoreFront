@@ -647,7 +647,7 @@ export class AdminTablePageComponent implements OnInit, OnDestroy {
       id: promotion.id,
       name: promotion.name,
       type: promotion.type,
-      value: promotion.type === 'PERCENT' ? `${promotion.value}%` : this.money(promotion.value),
+      value: this.promotionValue(promotion),
       status: promotion.is_active === false ? 'Inactive' : 'Active'
     }))
   }
@@ -672,6 +672,14 @@ export class AdminTablePageComponent implements OnInit, OnDestroy {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
     }).format(Number(value || 0))
+  }
+
+  private promotionValue(promotion: Promotion): string {
+    if (promotion.type === 'BUNDLE') {
+      return `${promotion.bundle_quantity || 0} for ${this.money(promotion.bundle_price || 0)}`
+    }
+
+    return promotion.type === 'PERCENT' ? `${promotion.value}%` : this.money(promotion.value)
   }
 
   private date(value?: string): string {
