@@ -9,7 +9,20 @@ export class OrderModel {
 
   async show(id: string): Promise<Order> {
     const result = await pool.query('SELECT * FROM orders WHERE id = $1', [id])
-    return result.rows[0]
+    const order = result.rows[0]
+    if (!order) return order
+
+    const items = await pool.query(
+      `SELECT op.id, op.order_id, op.product_id, op.quantity, op.price,
+              p.name AS product_name, p.category
+       FROM order_products op
+       JOIN products p ON p.id = op.product_id
+       WHERE op.order_id = $1
+       ORDER BY op.id`,
+      [id]
+    )
+
+    return { ...order, items: items.rows }
   }
 
   async create(order: Order): Promise<Order> {

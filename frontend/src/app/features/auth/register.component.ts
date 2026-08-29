@@ -62,6 +62,28 @@ import { TranslationService } from '../../core/i18n/translation.service'
           <input formControlName="phone" placeholder="050-123-4567" autocomplete="tel" />
         </label>
 
+        <div class="signup-location-block">
+          <button type="button" class="location-button" [disabled]="locating" (click)="useCurrentLocation()">
+            <i class="pi pi-map-marker" aria-hidden="true"></i>
+            {{ locating ? ('auth.locating' | t) : ('auth.useMyLocation' | t) }}
+          </button>
+          <small>{{ 'auth.locationHint' | t }}</small>
+          <p *ngIf="locationMessage" class="location-status success">{{ locationMessage }}</p>
+          <p *ngIf="locationError" class="location-status error">{{ locationError }}</p>
+        </div>
+
+        <label>
+          {{ 'auth.address' | t }}
+          <input formControlName="address" [placeholder]="'auth.addressPlaceholder' | t" autocomplete="street-address" />
+          <span *ngIf="f.controls.address.invalid && f.controls.address.touched">{{ 'auth.addressRequired' | t }}</span>
+        </label>
+
+        <label>
+          {{ 'auth.city' | t }}
+          <input formControlName="city" [placeholder]="'auth.cityPlaceholder' | t" autocomplete="address-level2" />
+          <span *ngIf="f.controls.city.invalid && f.controls.city.touched">{{ 'auth.cityRequired' | t }}</span>
+        </label>
+
         <label>
           {{ 'auth.password' | t }}
           <input formControlName="password" type="password" placeholder="At least 6 characters" autocomplete="new-password" />
@@ -85,13 +107,18 @@ import { TranslationService } from '../../core/i18n/translation.service'
 })
 export class RegisterComponent {
   submitting = false
+  locating = false
   error: string | null = null
+  locationError: string | null = null
+  locationMessage: string | null = null
 
   f = this.fb.nonNullable.group({
     firstname: ['', Validators.required],
     lastname: ['', Validators.required],
     email: ['', Validators.email],
     phone: [''],
+    address: ['', Validators.required],
+    city: ['', Validators.required],
     password: ['', [Validators.required, Validators.minLength(6)]]
   })
 
@@ -102,6 +129,69 @@ export class RegisterComponent {
     private router: Router,
     private i18n: TranslationService
   ) {}
+
+  async useCurrentLocation(): Promise<void> {
+    this.locationError = null
+    this.locationMessage = null
+
+    if (!window.isSecureContext) {
+      this.locationError = this.i18n.translate('auth.locationSecureContext')
+      return
+    }
+
+    if (!navigator.geolocation) {
+      this.locationError = this.i18n.translate('auth.locationUnsupported')
+      return
+    }
+
+    this.locating = true
+
+    try {
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: 12000,
+          maximumAge: 60000
+        })
+      })
+      const { latitude, longitude } = position.coords
+      const language = this.i18n.currentLanguage
+      const response = await fetch(
+        `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=${language}`
+      )
+
+      if (!response.ok) {
+        throw new Error('Reverse geocoding failed')
+      }
+
+      const location = await response.json() as {
+        locality?: string
+        city?: string
+        principalSubdivision?: string
+        countryName?: string
+      }
+      const city = location.city || location.locality || location.principalSubdivision || ''
+      const address = [location.locality, location.principalSubdivision, location.countryName]
+        .filter((value, index, values) => value && values.indexOf(value) === index)
+        .join(', ')
+
+      if (!city) {
+        throw new Error('Location did not include a city')
+      }
+
+      this.f.patchValue({ city, address: address || city })
+      this.f.controls.city.markAsTouched()
+      this.f.controls.address.markAsTouched()
+      this.locationMessage = this.i18n.translate('auth.locationFound')
+    } catch (error) {
+      const geolocationError = error as GeolocationPositionError
+      this.locationError = geolocationError?.code === geolocationError?.PERMISSION_DENIED
+        ? this.i18n.translate('auth.locationDenied')
+        : this.i18n.translate('auth.locationUnavailable')
+    } finally {
+      this.locating = false
+    }
+  }
 
   submit() {
     if (this.f.invalid) {

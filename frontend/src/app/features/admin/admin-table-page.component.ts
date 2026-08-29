@@ -187,6 +187,9 @@ export class AdminTablePageComponent implements OnInit, OnDestroy {
   private dataSub?: Subscription
   private loadRequestId = 0
   private readonly tableLoadTimeoutMs = 10000
+  private readonly rowsCache = new Map<string, { source: unknown[]; rows: Record<string, unknown>[] }>()
+  private readonly optionsCache = new Map<string, { source: unknown[]; options: string[] }>()
+  readonly promotionStatuses = ['Active', 'Inactive']
 
   productColumns: ColDef[] = [
     { field: 'id', headerName: 'ID', width: 90, flex: 0 },
@@ -195,7 +198,7 @@ export class AdminTablePageComponent implements OnInit, OnDestroy {
     { field: 'price', headerName: 'Price' },
     { field: 'finalPrice', headerName: 'Final price' },
     { field: 'promotion', headerName: 'Promotion' },
-    { field: 'created_at', headerName: 'Created' },
+    this.createdColumn(),
     this.actionColumn('products')
   ]
 
@@ -203,7 +206,7 @@ export class AdminTablePageComponent implements OnInit, OnDestroy {
     { field: 'id', headerName: 'ID', width: 90, flex: 0 },
     { field: 'name', headerName: 'Category' },
     { field: 'description', headerName: 'Description' },
-    { field: 'created_at', headerName: 'Created' },
+    this.createdColumn(),
     this.actionColumn('categories')
   ]
 
@@ -224,7 +227,7 @@ export class AdminTablePageComponent implements OnInit, OnDestroy {
     { field: 'payment_method', headerName: 'Method' },
     { field: 'delivery_type', headerName: 'Delivery' },
     { field: 'total_amount', headerName: 'Total' },
-    { field: 'created_at', headerName: 'Created' },
+    this.createdColumn(),
     this.actionColumn('orders', false, true)
   ]
 
@@ -236,7 +239,7 @@ export class AdminTablePageComponent implements OnInit, OnDestroy {
     { field: 'payment_method', headerName: 'Method' },
     { field: 'total_amount', headerName: 'Amount' },
     { field: 'order_status', headerName: 'Order status' },
-    { field: 'created_at', headerName: 'Created' },
+    this.createdColumn(),
     this.actionColumn('payments', false, true)
   ]
 
@@ -248,7 +251,7 @@ export class AdminTablePageComponent implements OnInit, OnDestroy {
     { field: 'role', headerName: 'Role' },
     { field: 'status', headerName: 'Status' },
     { field: 'city', headerName: 'City' },
-    { field: 'created_at', headerName: 'Created' },
+    this.createdColumn(),
     this.actionColumn('users')
   ]
 
@@ -548,48 +551,44 @@ export class AdminTablePageComponent implements OnInit, OnDestroy {
   }
 
   get productCategories(): string[] {
-    return this.unique(this.products.map(product => product.category || 'Uncategorized'))
+    return this.cachedOptions('product-categories', this.products, () => this.unique(this.products.map(product => product.category || 'Uncategorized')))
   }
 
   get orderStatuses(): string[] {
-    return this.unique(this.orders.map(order => order.status || 'PENDING'))
+    return this.cachedOptions('order-statuses', this.orders, () => this.unique(this.orders.map(order => order.status || 'PENDING')))
   }
 
   get paymentStatuses(): string[] {
-    return this.unique(this.orders.map(order => order.payment_status || 'PENDING'))
+    return this.cachedOptions('payment-statuses', this.orders, () => this.unique(this.orders.map(order => order.payment_status || 'PENDING')))
   }
 
   get categoryRows(): Record<string, unknown>[] {
-    return this.categories.map(category => ({
+    return this.cachedRows('categories', this.categories, () => this.categories.map(category => ({
       id: category.id,
       name: category.name,
       description: category.description || 'None',
-      created_at: this.date(category.created_at)
-    }))
+      created_at: category.created_at || ''
+    })))
   }
 
   get userRoles(): string[] {
-    return this.unique(this.users.map(user => user.role || 'CUSTOMER'))
-  }
-
-  get promotionStatuses(): string[] {
-    return ['Active', 'Inactive']
+    return this.cachedOptions('user-roles', this.users, () => this.unique(this.users.map(user => user.role || 'CUSTOMER')))
   }
 
   get productRows(): Record<string, unknown>[] {
-    return this.products.map(product => ({
+    return this.cachedRows('products', this.products, () => this.products.map(product => ({
       id: product.id,
       name: product.name,
       category: product.category || 'Uncategorized',
       price: this.money(product.price),
       finalPrice: this.money(product.finalPrice ?? product.price),
       promotion: product.promotion?.name || 'None',
-      created_at: this.date(product.created_at)
-    }))
+      created_at: product.created_at || ''
+    })))
   }
 
   get orderRows(): Record<string, unknown>[] {
-    return this.orders.map(order => ({
+    return this.cachedRows('orders', this.orders, () => this.orders.map(order => ({
       id: order.id,
       user_id: order.user_id,
       status: order.status,
@@ -597,12 +596,12 @@ export class AdminTablePageComponent implements OnInit, OnDestroy {
       payment_method: order.payment_method || 'CASH',
       delivery_type: order.delivery_type || 'PICKUP',
       total_amount: this.money(order.total_amount || 0),
-      created_at: this.date(order.created_at)
-    }))
+      created_at: order.created_at || ''
+    })))
   }
 
   get paymentRows(): Record<string, unknown>[] {
-    return this.orders.map(order => ({
+    return this.cachedRows('payments', this.orders, () => this.orders.map(order => ({
       id: order.id,
       order_id: order.id,
       user_id: order.user_id,
@@ -610,8 +609,8 @@ export class AdminTablePageComponent implements OnInit, OnDestroy {
       payment_method: order.payment_method || 'CASH',
       total_amount: this.money(order.total_amount || 0),
       order_status: order.status || 'PENDING',
-      created_at: this.date(order.created_at)
-    }))
+      created_at: order.created_at || ''
+    })))
   }
 
   get paidPaymentsCount(): number {
@@ -643,17 +642,17 @@ export class AdminTablePageComponent implements OnInit, OnDestroy {
   }
 
   get promotionRows(): Record<string, unknown>[] {
-    return this.promotions.map(promotion => ({
+    return this.cachedRows('promotions', this.promotions, () => this.promotions.map(promotion => ({
       id: promotion.id,
       name: promotion.name,
       type: promotion.type,
       value: this.promotionValue(promotion),
       status: promotion.is_active === false ? 'Inactive' : 'Active'
-    }))
+    })))
   }
 
   get userRows(): Record<string, unknown>[] {
-    return this.users.map(user => ({
+    return this.cachedRows('users', this.users, () => this.users.map(user => ({
       id: user.id,
       displayName: user.name || [user.firstname, user.lastname].filter(Boolean).join(' '),
       email: user.email || 'None',
@@ -661,8 +660,8 @@ export class AdminTablePageComponent implements OnInit, OnDestroy {
       role: user.role || 'CUSTOMER',
       status: user.is_active === false ? 'Inactive' : 'Active',
       city: user.city || 'None',
-      created_at: this.date(user.created_at)
-    }))
+      created_at: user.created_at || ''
+    })))
   }
 
   money(value: number): string {
@@ -686,8 +685,38 @@ export class AdminTablePageComponent implements OnInit, OnDestroy {
     return value ? new Date(value).toLocaleDateString() : 'None'
   }
 
+  private createdColumn(): ColDef {
+    return {
+      field: 'created_at',
+      headerName: 'Created',
+      comparator: (left: string, right: string) => this.dateTime(left) - this.dateTime(right),
+      valueFormatter: params => this.date(params.value)
+    }
+  }
+
+  private dateTime(value?: string): number {
+    const timestamp = value ? new Date(value).getTime() : 0
+    return Number.isFinite(timestamp) ? timestamp : 0
+  }
+
   private unique(values: string[]): string[] {
     return Array.from(new Set(values.filter(Boolean))).sort((a, b) => a.localeCompare(b))
+  }
+
+  private cachedRows(key: string, source: unknown[], create: () => Record<string, unknown>[]): Record<string, unknown>[] {
+    const cached = this.rowsCache.get(key)
+    if (cached?.source === source) return cached.rows
+    const rows = create()
+    this.rowsCache.set(key, { source, rows })
+    return rows
+  }
+
+  private cachedOptions(key: string, source: unknown[], create: () => string[]): string[] {
+    const cached = this.optionsCache.get(key)
+    if (cached?.source === source) return cached.options
+    const options = create()
+    this.optionsCache.set(key, { source, options })
+    return options
   }
 
   private sumPaymentsByStatus(status: string): number {

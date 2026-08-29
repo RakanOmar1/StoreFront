@@ -18,6 +18,8 @@ export interface OrderItem {
   product_id: number
   quantity: number
   price?: number
+  product_name?: string
+  category?: string | null
   created_at?: string
   updated_at?: string
 }

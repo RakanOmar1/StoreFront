@@ -59,6 +59,10 @@ export async function ensureCommerceSchema(): Promise<void> {
       updated_at TIMESTAMP NOT NULL DEFAULT NOW()
     );
 
+    ALTER TABLE carts
+      ADD COLUMN IF NOT EXISTS created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP NOT NULL DEFAULT NOW();
+
     CREATE TABLE IF NOT EXISTS cart_items (
       id SERIAL PRIMARY KEY,
       cart_id BIGINT NOT NULL REFERENCES carts(id) ON DELETE CASCADE,
@@ -68,6 +72,10 @@ export async function ensureCommerceSchema(): Promise<void> {
       updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
       UNIQUE (cart_id, product_id)
     );
+
+    ALTER TABLE cart_items
+      ADD COLUMN IF NOT EXISTS created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP NOT NULL DEFAULT NOW();
 
     ALTER TABLE orders
       ADD COLUMN IF NOT EXISTS total_amount NUMERIC(10, 2) NOT NULL DEFAULT 0,

@@ -68,22 +68,31 @@ import { LanguageSwitcherComponent } from '../language-switcher/language-switche
         <div *ngIf="isAuthenticated$ | async" class="account-menu-wrap">
           <button
             type="button"
-            class="profile-avatar"
+            class="profile-avatar authenticated-menu-trigger"
             [attr.aria-label]="profileLabel"
             aria-haspopup="menu"
             [attr.aria-expanded]="menuOpen"
             (click)="toggleMenu($event)"
           >
-            {{ profileInitials }}
+            <i class="pi pi-bars mobile-menu-icon" aria-hidden="true"></i>
+            <span class="profile-initials">{{ profileInitials }}</span>
+            <span class="mobile-menu-text">{{ 'nav.menu' | t }}</span>
           </button>
 
           <div *ngIf="menuOpen" class="account-menu" role="menu">
+            <div class="account-menu-header">
+              <span class="account-menu-avatar">{{ profileInitials }}</span>
+              <span>
+                <strong>{{ profileDisplayName }}</strong>
+                <small *ngIf="profileEmail">{{ profileEmail }}</small>
+              </span>
+            </div>
             <a routerLink="/profile" role="menuitem" (click)="closeMenu()">
               <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M20 21a8 8 0 0 0-16 0" />
                 <circle cx="12" cy="7" r="4" />
               </svg>
-              {{ 'nav.myAccount' | t }}
+              <span class="menu-label">{{ 'nav.myAccount' | t }}</span>
             </a>
             <a routerLink="/cart" role="menuitem" (click)="closeMenu()">
               <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -91,7 +100,7 @@ import { LanguageSwitcherComponent } from '../language-switcher/language-switche
                 <circle cx="10" cy="19" r="1.5" />
                 <circle cx="17" cy="19" r="1.5" />
               </svg>
-              {{ 'nav.cart' | t }} ({{ cartCount$ | async }})
+              <span class="menu-label">{{ 'nav.cart' | t }} <b>{{ cartCount$ | async }}</b></span>
             </a>
             <button type="button" role="menuitem" (click)="logout()">
               <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -99,7 +108,7 @@ import { LanguageSwitcherComponent } from '../language-switcher/language-switche
                 <path d="M16 8l4 4-4 4" />
                 <path d="M9 12h11" />
               </svg>
-              {{ 'nav.logout' | t }}
+              <span class="menu-label">{{ 'nav.logout' | t }}</span>
             </button>
           </div>
         </div>
@@ -143,6 +152,15 @@ export class HeaderComponent {
     const name = [user?.firstname, user?.lastname].filter(Boolean).join(' ')
 
     return name ? `${name} profile` : 'Profile'
+  }
+
+  get profileDisplayName(): string {
+    const user = this.auth.getCurrentUser()
+    return [user?.firstname, user?.lastname].filter(Boolean).join(' ') || user?.name || 'Customer'
+  }
+
+  get profileEmail(): string {
+    return this.auth.getCurrentUser()?.email || ''
   }
 
   get isAdmin(): boolean {

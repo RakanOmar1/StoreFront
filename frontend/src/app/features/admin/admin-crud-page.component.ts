@@ -13,6 +13,8 @@ import { AdminChatterComponent } from './admin-chatter.component'
 import { AdminConfirmationDialogComponent } from './admin-confirmation-dialog.component'
 import { AdminSidebarComponent } from './admin-sidebar.component'
 import { AdminPageHeaderComponent, AdminStateBlockComponent } from './admin-ui.component'
+import { TranslatePipe } from '../../core/i18n/translate.pipe'
+import { TranslationService } from '../../core/i18n/translation.service'
 
 type AdminEntity = 'products' | 'categories' | 'promotions' | 'orders' | 'payments' | 'users'
 type CrudMode = 'create' | 'view' | 'edit' | 'delete'
@@ -30,7 +32,7 @@ interface CrudField {
 @Component({
   selector: 'app-admin-crud-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, DropdownModule, AdminSidebarComponent, AdminChatterComponent, AdminConfirmationDialogComponent, AdminPageHeaderComponent, AdminStateBlockComponent],
+  imports: [CommonModule, FormsModule, RouterModule, DropdownModule, TranslatePipe, AdminSidebarComponent, AdminChatterComponent, AdminConfirmationDialogComponent, AdminPageHeaderComponent, AdminStateBlockComponent],
   template: `
     <section class="admin-shell">
       <app-admin-sidebar />
@@ -40,8 +42,17 @@ interface CrudField {
           <div class="record-layout record-page-layout">
             <section class="record-content">
               <div class="admin-crud-shell">
-              <app-admin-page-header [eyebrow]="entityLabel" [title]="pageTitle" [description]="pageDescription">
-                <a [routerLink]="listLink" class="secondary-button">Back to list</a>
+              <app-admin-page-header *ngIf="entity !== 'orders'" [eyebrow]="entityLabel" [title]="pageTitle" [description]="pageDescription">
+                <div class="record-navigation">
+                  <button type="button" class="record-navigation-button" [disabled]="!previousRecordId" (click)="openAdjacentRecord(previousRecordId)" aria-label="Previous record">
+                    <i class="pi pi-chevron-left" aria-hidden="true"></i>
+                  </button>
+                  <span *ngIf="recordIds.length">{{ currentRecordPosition }} / {{ recordIds.length }}</span>
+                  <button type="button" class="record-navigation-button" [disabled]="!nextRecordId" (click)="openAdjacentRecord(nextRecordId)" aria-label="Next record">
+                    <i class="pi pi-chevron-right" aria-hidden="true"></i>
+                  </button>
+                  <a [routerLink]="listLink" class="secondary-button">Back to list</a>
+                </div>
               </app-admin-page-header>
 
               <app-admin-state-block *ngIf="loading" title="Loading record" message="Fetching the latest saved values." [loading]="true" />
@@ -50,7 +61,188 @@ interface CrudField {
 
               <ng-container *ngIf="!loading">
                 <div *ngIf="mode === 'view'" class="admin-details-card">
-                  <div class="admin-form-grid readonly-form-grid">
+                  <section *ngIf="entity === 'orders'" class="commerce-order-detail">
+                    <div class="commerce-invoice-print-header">
+                      <div><strong>7 Stars Mall</strong><span>{{ 'admin.orderDetail.orderInvoice' | t }}</span></div>
+                      <div><strong>{{ 'admin.orderDetail.invoice' | t }} #{{ form['id'] }}</strong><span>{{ displayValue('created_at') }}</span></div>
+                    </div>
+                    <header class="commerce-order-header">
+                      <div class="commerce-order-heading">
+                        <a [routerLink]="listLink" class="commerce-back-link"><i class="pi pi-arrow-left" aria-hidden="true"></i> {{ 'admin.orderDetail.backToOrders' | t }}</a>
+                        <h1>{{ 'admin.orderDetail.order' | t }} #{{ form['id'] }}</h1>
+                        <p>{{ 'admin.orderDetail.placed' | t }} {{ displayValue('created_at') }}</p>
+                        <div class="commerce-status-badges">
+                          <span [class]="'commerce-status-badge ' + statusTone(form['status'])"><i class="pi pi-box" aria-hidden="true"></i> {{ formatWorkflowLabel(form['status']) }}</span>
+                          <span [class]="'commerce-status-badge ' + statusTone(form['payment_status'])"><i class="pi pi-credit-card" aria-hidden="true"></i> {{ formatWorkflowLabel(form['payment_status']) }}</span>
+                        </div>
+                      </div>
+                      <div class="commerce-order-actions">
+                        <div class="record-navigation compact-record-navigation">
+                          <button type="button" class="record-navigation-button" [disabled]="!previousRecordId" (click)="openAdjacentRecord(previousRecordId)" [attr.aria-label]="'admin.orderDetail.previousOrder' | t"><i class="pi pi-chevron-left" aria-hidden="true"></i></button>
+                          <span *ngIf="recordIds.length">{{ currentRecordPosition }} / {{ recordIds.length }}</span>
+                          <button type="button" class="record-navigation-button" [disabled]="!nextRecordId" (click)="openAdjacentRecord(nextRecordId)" [attr.aria-label]="'admin.orderDetail.nextOrder' | t"><i class="pi pi-chevron-right" aria-hidden="true"></i></button>
+                        </div>
+                        <button type="button" class="commerce-print-invoice" (click)="printInvoice()"><i class="pi pi-print" aria-hidden="true"></i> {{ 'admin.orderDetail.printInvoice' | t }}</button>
+                        <a [routerLink]="editLink" class="commerce-edit-order"><i class="pi pi-pencil" aria-hidden="true"></i> {{ 'admin.orderDetail.editOrder' | t }}</a>
+                        <details class="commerce-more-menu">
+                          <summary [attr.aria-label]="'admin.orderDetail.moreActions' | t"><i class="pi pi-ellipsis-v" aria-hidden="true"></i></summary>
+                          <div>
+                            <button type="button" (click)="updateOrderWorkflow('status', 'CANCELLED')"><i class="pi pi-ban" aria-hidden="true"></i> {{ 'admin.orderDetail.cancelOrder' | t }}</button>
+                            <button type="button" class="danger" (click)="openDeleteDialog()"><i class="pi pi-trash" aria-hidden="true"></i> {{ 'admin.orderDetail.deleteOrder' | t }}</button>
+                          </div>
+                        </details>
+                      </div>
+                    </header>
+
+                    <div class="commerce-order-layout">
+                      <main class="commerce-order-main">
+                        <section class="commerce-section commerce-items-card">
+                          <header><div><h2>{{ 'admin.orderDetail.orderItems' | t }}</h2><p>{{ 'admin.orderDetail.itemCount' | t:{ count: orderItemCount } }}</p></div></header>
+                          <div class="commerce-items-head" aria-hidden="true"><span>{{ 'admin.orderDetail.product' | t }}</span><span>{{ 'admin.orderDetail.qty' | t }}</span><span>{{ 'admin.orderDetail.unitPrice' | t }}</span><span>{{ 'admin.orderDetail.total' | t }}</span></div>
+                          <div *ngIf="orderItems.length; else noCommerceItems" class="commerce-items-list">
+                            <article *ngFor="let item of orderItems">
+                              <span class="commerce-product-icon"><i class="pi pi-box" aria-hidden="true"></i></span>
+                              <div class="commerce-product-copy"><strong>{{ item.product_name || ('Product #' + item.product_id) }}</strong><small>{{ item.category || 'Uncategorized' }}</small></div>
+                              <div class="commerce-item-cell" [attr.data-label]="'admin.orderDetail.qty' | t">{{ item.quantity }}</div>
+                              <div class="commerce-item-cell" [attr.data-label]="'admin.orderDetail.unitPrice' | t">{{ item.price || 0 | currency:'ILS' }}</div>
+                              <strong class="commerce-item-cell commerce-line-total" [attr.data-label]="'admin.orderDetail.total' | t">{{ orderItemTotal(item) | currency:'ILS' }}</strong>
+                            </article>
+                          </div>
+                          <ng-template #noCommerceItems><div class="admin-order-items-empty"><i class="pi pi-inbox" aria-hidden="true"></i> {{ 'admin.orderDetail.noProducts' | t }}</div></ng-template>
+
+                          <div class="commerce-order-totals">
+                            <div><span>{{ 'admin.orderDetail.orderTotal' | t }}</span><strong>{{ form['total_amount'] || 0 | currency:'ILS' }}</strong></div>
+                            <div *ngIf="form['payment_status'] === 'REFUNDED'" class="refunded"><span>{{ 'admin.orderDetail.refunded' | t }}</span><strong>-{{ form['total_amount'] || 0 | currency:'ILS' }}</strong></div>
+                          </div>
+                        </section>
+
+                        <section class="commerce-section commerce-metadata-card">
+                          <h2>{{ 'admin.orderDetail.orderInformation' | t }}</h2>
+                          <dl>
+                            <div><dt>{{ 'admin.orderDetail.orderId' | t }}</dt><dd>#{{ form['id'] }}</dd></div>
+                            <div><dt>{{ 'admin.orderDetail.created' | t }}</dt><dd>{{ displayValue('created_at') }}</dd></div>
+                            <div><dt>{{ 'admin.orderDetail.lastUpdated' | t }}</dt><dd>{{ displayValue('updated_at') }}</dd></div>
+                          </dl>
+                        </section>
+                      </main>
+
+                      <aside class="commerce-order-context">
+                        <section class="commerce-section commerce-context-card">
+                          <span class="commerce-context-icon"><i class="pi pi-user" aria-hidden="true"></i></span>
+                          <div><h2>{{ 'admin.orderDetail.customer' | t }}</h2><strong>{{ 'admin.orderDetail.user' | t }} #{{ form['user_id'] }}</strong><a [routerLink]="['/admin/users', form['user_id']]">{{ 'admin.orderDetail.viewCustomer' | t }} <i class="pi pi-arrow-right" aria-hidden="true"></i></a></div>
+                        </section>
+
+                        <section class="commerce-section commerce-context-card commerce-status-card">
+                          <span class="commerce-context-icon"><i class="pi pi-truck" aria-hidden="true"></i></span>
+                          <div>
+                            <h2>{{ 'admin.orderDetail.fulfilment' | t }}</h2><strong>{{ formatWorkflowLabel(form['delivery_type']) }}</strong>
+                            <small>{{ 'admin.orderDetail.deliveryAddress' | t }}</small><p>{{ form['delivery_address'] || ('admin.orderDetail.storePickup' | t) }}</p>
+                            <label>{{ 'admin.orderDetail.orderStatus' | t }}
+                              <p-dropdown
+                                [ngModel]="form['status']"
+                                [options]="localizedOrderWorkflowStatuses"
+                                optionLabel="label"
+                                optionValue="value"
+                                appendTo="body"
+                                styleClass="commerce-status-dropdown"
+                                panelStyleClass="commerce-status-dropdown-panel"
+                                [disabled]="workflowUpdating"
+                                (onChange)="updateOrderWorkflow('status', $event.value)"
+                              >
+                                <ng-template pTemplate="selectedItem" let-status><span class="commerce-dropdown-option"><i [class]="status.icon" aria-hidden="true"></i><span>{{ status.label }}</span></span></ng-template>
+                                <ng-template pTemplate="item" let-status><span [class]="'commerce-dropdown-option ' + statusTone(status.value)"><i [class]="status.icon" aria-hidden="true"></i><span>{{ status.label }}</span><i *ngIf="form['status'] === status.value" class="pi pi-check option-check" aria-hidden="true"></i></span></ng-template>
+                              </p-dropdown>
+                            </label>
+                          </div>
+                        </section>
+
+                        <section class="commerce-section commerce-context-card commerce-status-card">
+                          <span class="commerce-context-icon"><i class="pi pi-credit-card" aria-hidden="true"></i></span>
+                          <div>
+                            <h2>{{ 'admin.orderDetail.payment' | t }}</h2><strong>{{ formatWorkflowLabel(form['payment_method']) }}</strong>
+                            <small>{{ 'admin.orderDetail.status' | t }}</small><span [class]="'commerce-status-badge ' + statusTone(form['payment_status'])">{{ formatWorkflowLabel(form['payment_status']) }}</span>
+                            <label>{{ 'admin.orderDetail.paymentStatus' | t }}
+                              <p-dropdown
+                                [ngModel]="form['payment_status']"
+                                [options]="localizedPaymentWorkflowStatuses"
+                                optionLabel="label"
+                                optionValue="value"
+                                appendTo="body"
+                                styleClass="commerce-status-dropdown"
+                                panelStyleClass="commerce-status-dropdown-panel"
+                                [disabled]="workflowUpdating"
+                                (onChange)="updateOrderWorkflow('payment_status', $event.value)"
+                              >
+                                <ng-template pTemplate="selectedItem" let-status><span class="commerce-dropdown-option"><i [class]="status.icon" aria-hidden="true"></i><span>{{ status.label }}</span></span></ng-template>
+                                <ng-template pTemplate="item" let-status><span [class]="'commerce-dropdown-option ' + statusTone(status.value)"><i [class]="status.icon" aria-hidden="true"></i><span>{{ status.label }}</span><i *ngIf="form['payment_status'] === status.value" class="pi pi-check option-check" aria-hidden="true"></i></span></ng-template>
+                              </p-dropdown>
+                            </label>
+                          </div>
+                        </section>
+                      </aside>
+                    </div>
+                  </section>
+
+                  <section *ngIf="entity === 'orders'" class="invoice-document" aria-hidden="true">
+                    <header class="invoice-document-header">
+                      <div class="invoice-brand">
+                        <span class="invoice-brand-mark">7</span>
+                        <div><strong>Stars Mall</strong><small>{{ 'admin.orderDetail.orderInvoice' | t }}</small></div>
+                      </div>
+                      <div class="invoice-number">
+                        <span>{{ 'admin.orderDetail.invoice' | t }}</span>
+                        <strong>#{{ form['id'] }}</strong>
+                        <small>{{ 'admin.orderDetail.invoiceDate' | t }}: {{ displayValue('created_at') }}</small>
+                      </div>
+                    </header>
+
+                    <div class="invoice-status-line">
+                      <span [class]="'invoice-status ' + statusTone(form['status'])"><i class="pi pi-box" aria-hidden="true"></i>{{ formatWorkflowLabel(form['status']) }}</span>
+                      <span [class]="'invoice-status ' + statusTone(form['payment_status'])"><i class="pi pi-credit-card" aria-hidden="true"></i>{{ formatWorkflowLabel(form['payment_status']) }}</span>
+                    </div>
+
+                    <section class="invoice-parties">
+                      <div>
+                        <span class="invoice-label">{{ 'admin.orderDetail.billTo' | t }}</span>
+                        <strong>{{ 'admin.orderDetail.user' | t }} #{{ form['user_id'] }}</strong>
+                        <small>{{ 'admin.orderDetail.customerReference' | t }}</small>
+                      </div>
+                      <div>
+                        <span class="invoice-label">{{ 'admin.orderDetail.shipTo' | t }}</span>
+                        <strong>{{ formatWorkflowLabel(form['delivery_type']) }}</strong>
+                        <small>{{ form['delivery_address'] || ('admin.orderDetail.storePickup' | t) }}</small>
+                      </div>
+                      <div>
+                        <span class="invoice-label">{{ 'admin.orderDetail.paymentMethod' | t }}</span>
+                        <strong>{{ formatWorkflowLabel(form['payment_method']) }}</strong>
+                        <small>{{ formatWorkflowLabel(form['payment_status']) }}</small>
+                      </div>
+                    </section>
+
+                    <section class="invoice-lines">
+                      <h2>{{ 'admin.orderDetail.orderItems' | t }}</h2>
+                      <div class="invoice-table-head"><span>{{ 'admin.orderDetail.product' | t }}</span><span>{{ 'admin.orderDetail.qty' | t }}</span><span>{{ 'admin.orderDetail.unitPrice' | t }}</span><span>{{ 'admin.orderDetail.total' | t }}</span></div>
+                      <div *ngFor="let item of orderItems" class="invoice-table-row">
+                        <div><strong>{{ item.product_name || ('admin.orderDetail.product' | t) + ' #' + item.product_id }}</strong><small>{{ item.category || ('admin.orderDetail.uncategorized' | t) }}</small></div>
+                        <span>{{ item.quantity }}</span>
+                        <span>{{ item.price || 0 | currency:'ILS' }}</span>
+                        <strong>{{ orderItemTotal(item) | currency:'ILS' }}</strong>
+                      </div>
+                    </section>
+
+                    <section class="invoice-summary">
+                      <div><span>{{ 'admin.orderDetail.subtotal' | t }}</span><strong>{{ form['total_amount'] || 0 | currency:'ILS' }}</strong></div>
+                      <div *ngIf="form['payment_status'] === 'REFUNDED'" class="invoice-refund"><span>{{ 'admin.orderDetail.refunded' | t }}</span><strong>-{{ form['total_amount'] || 0 | currency:'ILS' }}</strong></div>
+                      <div class="invoice-total"><span>{{ 'admin.orderDetail.totalDue' | t }}</span><strong>{{ form['payment_status'] === 'REFUNDED' ? (0 | currency:'ILS') : (form['total_amount'] || 0 | currency:'ILS') }}</strong></div>
+                    </section>
+
+                    <footer class="invoice-footer">
+                      <strong>{{ 'admin.orderDetail.thankYou' | t }}</strong>
+                      <span>Stars Mall · 7 Stars Marketplace</span>
+                    </footer>
+                  </section>
+
+                  <div *ngIf="entity !== 'orders'" class="admin-form-grid readonly-form-grid">
                     <label
                       *ngFor="let field of previewFields"
                       [class.span-2]="field.type === 'textarea' || field.type === 'imageList'"
@@ -100,7 +292,109 @@ interface CrudField {
                       </ng-container>
                     </label>
                   </div>
-                  <div class="admin-crud-actions">
+
+                  <section *ngIf="false" class="odoo-order-statusbar">
+                    <div class="odoo-status-actions">
+                      <button type="button" class="odoo-cancel-action" [class.active]="form['status'] === 'CANCELLED'" [disabled]="workflowUpdating" (click)="updateOrderWorkflow('status', 'CANCELLED')">
+                        <i class="pi pi-ban" aria-hidden="true"></i> {{ form['status'] === 'CANCELLED' ? 'Cancelled' : 'Cancel' }}
+                      </button>
+                      <span *ngIf="workflowUpdating"><i class="pi pi-spin pi-spinner" aria-hidden="true"></i> Saving</span>
+                    </div>
+                    <div class="odoo-status-track" aria-label="Order fulfilment status">
+                      <button
+                        *ngFor="let status of orderWorkflowStatuses"
+                        type="button"
+                        [class.active]="form['status'] === status.value"
+                        [class.completed]="isWorkflowCompleted(status.value)"
+                        [disabled]="workflowUpdating"
+                        (click)="updateOrderWorkflow('status', status.value)"
+                      >{{ status.label }}</button>
+                    </div>
+                    <div class="odoo-payment-status">
+                      <span>Payment</span>
+                      <button
+                        *ngFor="let status of paymentWorkflowStatuses"
+                        type="button"
+                        [class.active]="form['payment_status'] === status.value"
+                        [class.danger]="status.value === 'FAILED'"
+                        [disabled]="workflowUpdating"
+                        (click)="updateOrderWorkflow('payment_status', status.value)"
+                      >{{ status.label }}</button>
+                    </div>
+                  </section>
+
+                  <section *ngIf="false" class="admin-order-overview">
+                    <header class="admin-order-overview-header">
+                      <div>
+                        <p class="eyebrow">Order overview</p>
+                        <h2>Order #{{ form['id'] }}</h2>
+                        <p>Placed {{ displayValue('created_at') }}</p>
+                      </div>
+                      <div class="admin-order-badges">
+                        <span class="order-status-badge"><i class="pi pi-box" aria-hidden="true"></i> {{ formatWorkflowLabel(form['status']) }}</span>
+                        <span class="payment-status-badge"><i class="pi pi-credit-card" aria-hidden="true"></i> {{ formatWorkflowLabel(form['payment_status']) }}</span>
+                      </div>
+                    </header>
+
+                    <div class="admin-order-summary-grid">
+                      <article>
+                        <span><i class="pi pi-user" aria-hidden="true"></i> Customer</span>
+                        <strong>User #{{ form['user_id'] }}</strong>
+                        <small>Customer account reference</small>
+                      </article>
+                      <article>
+                        <span><i class="pi pi-wallet" aria-hidden="true"></i> Order total</span>
+                        <strong>{{ form['total_amount'] || 0 | currency:'ILS' }}</strong>
+                        <small>{{ orderItemCount }} products in this order</small>
+                      </article>
+                      <article>
+                        <span><i class="pi pi-truck" aria-hidden="true"></i> Fulfilment</span>
+                        <strong>{{ formatWorkflowLabel(form['delivery_type']) }}</strong>
+                        <small>{{ form['delivery_address'] || 'Store pickup' }}</small>
+                      </article>
+                      <article>
+                        <span><i class="pi pi-credit-card" aria-hidden="true"></i> Payment</span>
+                        <strong>{{ formatWorkflowLabel(form['payment_method']) }}</strong>
+                        <small>{{ formatWorkflowLabel(form['payment_status']) }}</small>
+                      </article>
+                    </div>
+                  </section>
+
+                  <section *ngIf="entity === 'payments'" class="admin-order-items">
+                    <header>
+                      <div>
+                        <p class="eyebrow">Order contents</p>
+                        <h2>Order items</h2>
+                      </div>
+                      <span>{{ orderItemCount }} items</span>
+                    </header>
+
+                    <div *ngIf="orderItems.length; else noOrderItems" class="admin-order-items-list">
+                      <article *ngFor="let item of orderItems">
+                        <span class="admin-order-item-icon"><i class="pi pi-box" aria-hidden="true"></i></span>
+                        <div class="admin-order-item-product">
+                          <strong>{{ item.product_name || ('Product #' + item.product_id) }}</strong>
+                          <small>{{ item.category || 'Uncategorized' }}</small>
+                        </div>
+                        <div class="admin-order-item-value">
+                          <small>Quantity</small>
+                          <strong>{{ item.quantity }}</strong>
+                        </div>
+                        <div class="admin-order-item-value">
+                          <small>Unit price</small>
+                          <strong>{{ item.price || 0 | currency:'ILS' }}</strong>
+                        </div>
+                        <div class="admin-order-item-value admin-order-item-total">
+                          <small>Line total</small>
+                          <strong>{{ orderItemTotal(item) | currency:'ILS' }}</strong>
+                        </div>
+                      </article>
+                    </div>
+                    <ng-template #noOrderItems>
+                      <div class="admin-order-items-empty"><i class="pi pi-inbox" aria-hidden="true"></i> No products are attached to this order.</div>
+                    </ng-template>
+                  </section>
+                  <div *ngIf="entity !== 'orders'" class="admin-crud-actions">
                     <a [routerLink]="listLink" class="secondary-button">Back</a>
                     <a [routerLink]="editLink" class="admin-create-link">Edit</a>
                     <button type="button" class="danger-button" (click)="openDeleteDialog()">Delete</button>
@@ -528,6 +822,7 @@ export class AdminCrudPageComponent implements OnInit, CanLeaveWithUnsavedChange
   success = ''
   submitting = false
   deleting = false
+  workflowUpdating = false
   deleteDialogOpen = false
   deleteError = ''
   discardDialogOpen = false
@@ -535,6 +830,21 @@ export class AdminCrudPageComponent implements OnInit, CanLeaveWithUnsavedChange
   fieldsList: CrudField[] = []
   formFieldsList: CrudField[] = []
   previewFieldsList: CrudField[] = []
+  recordIds: string[] = []
+  readonly orderWorkflowStatuses = [
+    { value: 'PENDING', label: 'Pending', icon: 'pi pi-clock' },
+    { value: 'CONFIRMED', label: 'Confirmed', icon: 'pi pi-check-circle' },
+    { value: 'PREPARING', label: 'Preparing', icon: 'pi pi-box' },
+    { value: 'OUT_FOR_DELIVERY', label: 'Out for delivery', icon: 'pi pi-truck' },
+    { value: 'DELIVERED', label: 'Delivered', icon: 'pi pi-home' },
+    { value: 'CANCELLED', label: 'Cancelled', icon: 'pi pi-ban' }
+  ]
+  readonly paymentWorkflowStatuses = [
+    { value: 'PENDING', label: 'Pending', icon: 'pi pi-clock' },
+    { value: 'PAID', label: 'Paid', icon: 'pi pi-check-circle' },
+    { value: 'FAILED', label: 'Failed', icon: 'pi pi-times-circle' },
+    { value: 'REFUNDED', label: 'Refunded', icon: 'pi pi-replay' }
+  ]
   categories: Category[] = []
   products: Product[] = []
   productPickerOpen = false
@@ -559,7 +869,8 @@ export class AdminCrudPageComponent implements OnInit, CanLeaveWithUnsavedChange
   constructor(
     private route: ActivatedRoute,
     private router: Router,
-    private adminData: AdminDataService
+    private adminData: AdminDataService,
+    private i18n: TranslationService
   ) {}
 
   ngOnInit() {
@@ -572,6 +883,7 @@ export class AdminCrudPageComponent implements OnInit, CanLeaveWithUnsavedChange
     this.loadSupportingData()
 
     if (this.mode !== 'create' && this.id) {
+      this.loadRecordNavigation()
       this.loadRecord()
     }
   }
@@ -629,6 +941,113 @@ export class AdminCrudPageComponent implements OnInit, CanLeaveWithUnsavedChange
 
   get editLink(): string {
     return `/admin/${this.entity}/${this.id}/edit`
+  }
+
+  get currentRecordPosition(): number {
+    const index = this.recordIds.indexOf(String(this.id))
+    return index >= 0 ? index + 1 : 0
+  }
+
+  get previousRecordId(): string | null {
+    const index = this.recordIds.indexOf(String(this.id))
+    return index > 0 ? this.recordIds[index - 1] : null
+  }
+
+  get nextRecordId(): string | null {
+    const index = this.recordIds.indexOf(String(this.id))
+    return index >= 0 && index < this.recordIds.length - 1 ? this.recordIds[index + 1] : null
+  }
+
+  get orderItems(): any[] {
+    return Array.isArray(this.form['items']) ? this.form['items'] : []
+  }
+
+  get orderItemCount(): number {
+    return this.orderItems.reduce((total, item) => total + (Number(item.quantity) || 0), 0)
+  }
+
+  orderItemTotal(item: any): number {
+    return (Number(item?.price) || 0) * (Number(item?.quantity) || 0)
+  }
+
+  isWorkflowCompleted(status: string): boolean {
+    if (this.form['status'] === 'CANCELLED') return false
+    const currentIndex = this.orderWorkflowStatuses.findIndex(item => item.value === this.form['status'])
+    const statusIndex = this.orderWorkflowStatuses.findIndex(item => item.value === status)
+    return statusIndex >= 0 && currentIndex > statusIndex
+  }
+
+  updateOrderWorkflow(field: 'status' | 'payment_status', value: string) {
+    if (this.workflowUpdating || this.entity !== 'orders' || this.form[field] === value) return
+
+    this.workflowUpdating = true
+    this.error = ''
+    this.success = ''
+    this.adminData.updateOrder(this.id, { ...this.form, [field]: value }).pipe(
+      finalize(() => {
+        this.workflowUpdating = false
+      })
+    ).subscribe({
+      next: record => {
+        this.form = this.normalizeLoadedRecord({ ...this.form, ...record, [field]: value })
+        this.captureInitialState()
+        this.success = field === 'status' ? `Order marked ${this.workflowLabel(value)}.` : `Payment marked ${this.workflowLabel(value)}.`
+      },
+      error: () => {
+        this.error = 'Could not update the order status.'
+      }
+    })
+  }
+
+  private workflowLabel(value: string): string {
+    return value.toLowerCase().replace(/_/g, ' ')
+  }
+
+  formatWorkflowLabel(value: unknown): string {
+    const key = String(value || 'NOT_SET').toUpperCase()
+    const path = `admin.orderDetail.values.${key}`
+    const translated = this.i18n.translate(path)
+    if (translated !== path) return translated
+    const text = String(value || 'Not set').toLowerCase().replace(/_/g, ' ')
+    return text.charAt(0).toUpperCase() + text.slice(1)
+  }
+
+  get localizedOrderWorkflowStatuses() {
+    return this.orderWorkflowStatuses.map(status => ({ ...status, label: this.formatWorkflowLabel(status.value) }))
+  }
+
+  get localizedPaymentWorkflowStatuses() {
+    return this.paymentWorkflowStatuses.map(status => ({ ...status, label: this.formatWorkflowLabel(status.value) }))
+  }
+
+  statusTone(value: unknown): string {
+    const status = String(value || '').toUpperCase()
+    if (['PAID', 'DELIVERED', 'COMPLETE', 'COMPLETED'].includes(status)) return 'success'
+    if (['PENDING', 'PREPARING'].includes(status)) return 'warning'
+    if (['CONFIRMED', 'OUT_FOR_DELIVERY'].includes(status)) return 'info'
+    if (['CANCELLED', 'FAILED'].includes(status)) return 'danger'
+    if (status === 'REFUNDED') return 'refund'
+    return 'neutral'
+  }
+
+  openAdjacentRecord(recordId: string | null) {
+    if (!recordId || this.submitting || this.deleting) return
+    this.id = recordId
+    this.error = ''
+    this.success = ''
+    this.router.navigate([`/admin/${this.entity}/${recordId}`], { replaceUrl: true })
+    this.loadRecord()
+  }
+
+  printInvoice() {
+    const originalTitle = document.title
+    document.title = `${this.i18n.translate('admin.orderDetail.invoice')}-${this.form['id'] || ''}`
+    const restoreTitle = () => {
+      document.title = originalTitle
+      window.removeEventListener('afterprint', restoreTitle)
+    }
+    window.addEventListener('afterprint', restoreTitle)
+    window.print()
   }
 
   get chatterEntityType(): string {
@@ -1358,6 +1777,28 @@ export class AdminCrudPageComponent implements OnInit, CanLeaveWithUnsavedChange
         this.error = `Could not load ${this.entitySingular.toLowerCase()}.`
       }
     })
+  }
+
+  private loadRecordNavigation() {
+    this.listRecords().subscribe({
+      next: records => {
+        this.recordIds = records
+          .map(record => String(record?.id ?? ''))
+          .filter(Boolean)
+          .sort((a, b) => Number(a) - Number(b))
+      },
+      error: () => {
+        this.recordIds = []
+      }
+    })
+  }
+
+  private listRecords(): Observable<any[]> {
+    if (this.entity === 'orders' || this.entity === 'payments') return this.adminData.loadOrders()
+    if (this.entity === 'users') return this.adminData.loadUsers()
+    if (this.entity === 'categories') return this.adminData.loadCategories()
+    if (this.entity === 'promotions') return this.adminData.loadPromotions()
+    return this.adminData.loadProducts()
   }
 
   private loadSupportingData() {

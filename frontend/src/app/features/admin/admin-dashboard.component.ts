@@ -12,6 +12,8 @@ import { AdminAnalyticsComponent } from './admin-analytics.component'
 import { AdminSidebarComponent } from './admin-sidebar.component'
 import { AdminPageHeaderComponent, AdminStateBlockComponent } from './admin-ui.component'
 import { TranslatePipe } from '../../core/i18n/translate.pipe'
+import { TranslationService } from '../../core/i18n/translation.service'
+import { DropdownModule } from 'primeng/dropdown'
 
 interface DashboardTopProduct {
   name: string
@@ -34,7 +36,7 @@ interface DashboardCategorySale {
 @Component({
   selector: 'app-admin-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, AdminSidebarComponent, AdminAnalyticsComponent, AdminPageHeaderComponent, AdminStateBlockComponent, TranslatePipe],
+  imports: [CommonModule, FormsModule, RouterModule, DropdownModule, AdminSidebarComponent, AdminAnalyticsComponent, AdminPageHeaderComponent, AdminStateBlockComponent, TranslatePipe],
   template: `
     <section class="admin-shell">
       <app-admin-sidebar />
@@ -80,18 +82,30 @@ interface DashboardCategorySale {
           <section class="dashboard-commerce-grid" *ngIf="!loading">
             <article class="dashboard-commerce-card dashboard-top-products-card">
               <header>
-                <div>
-                  <h2>Top Products</h2>
-                  <p>Best selling items</p>
+                <div class="dashboard-commerce-title">
+                  <span class="dashboard-commerce-title-icon"><i class="pi pi-star" aria-hidden="true"></i></span>
+                  <div>
+                    <h2>{{ 'admin.topProductsCompact' | t }}</h2>
+                    <p>{{ 'admin.bestSellingItems' | t }}</p>
+                  </div>
                 </div>
-                <select
-                  class="dashboard-period-select"
+                <p-dropdown
                   [ngModel]="commercePeriod"
-                  (ngModelChange)="changeCommercePeriod($event)"
-                  aria-label="Top products period"
+                  [options]="commercePeriodOptions"
+                  optionValue="value"
+                  appendTo="body"
+                  styleClass="dashboard-period-dropdown"
+                  panelStyleClass="dashboard-period-dropdown-panel"
+                  [attr.aria-label]="'admin.topProductsPeriod' | t"
+                  (onChange)="changeCommercePeriod($event.value)"
                 >
-                  <option *ngFor="let option of commercePeriodOptions" [ngValue]="option.value">{{ option.label }}</option>
-                </select>
+                  <ng-template pTemplate="selectedItem" let-option>
+                    <span class="dashboard-period-option"><i class="pi pi-calendar" aria-hidden="true"></i>{{ option.labelKey | t }}</span>
+                  </ng-template>
+                  <ng-template pTemplate="item" let-option>
+                    <span class="dashboard-period-option"><i class="pi pi-calendar" aria-hidden="true"></i><span>{{ option.labelKey | t }}</span><i *ngIf="commercePeriod === option.value" class="pi pi-check period-check" aria-hidden="true"></i></span>
+                  </ng-template>
+                </p-dropdown>
               </header>
 
               <div class="dashboard-commerce-state" *ngIf="commerceLoading && !topProductRows.length">Loading commerce summary...</div>
@@ -101,14 +115,14 @@ interface DashboardCategorySale {
 
               <div class="dashboard-product-list" *ngIf="!commerceError && topProductRows.length">
                 <div class="dashboard-product-row" *ngFor="let product of topProductRows; trackBy: trackTopProduct">
-                  <span class="dashboard-product-icon">{{ product.icon }}</span>
+                  <span class="dashboard-product-icon"><i [class]="product.icon" aria-hidden="true"></i></span>
                   <div>
                     <strong>{{ product.name }}</strong>
-                    <small>{{ product.meta }} · {{ product.unitsSold }} sold</small>
+                    <small>{{ categoryLabel(product.meta) }} <span aria-hidden="true">·</span> {{ 'admin.unitsSold' | t:{ count: product.unitsSold } }}</small>
                   </div>
                   <aside>
                     <strong>{{ product.revenue }}</strong>
-                    <small [class.negative]="!product.trendPositive">{{ product.trend }}</small>
+                    <small [class.negative]="!product.trendPositive"><i [class]="product.trendPositive ? 'pi pi-arrow-up-right' : 'pi pi-arrow-down-right'" aria-hidden="true"></i>{{ product.trend }}</small>
                   </aside>
                 </div>
               </div>
@@ -116,9 +130,12 @@ interface DashboardCategorySale {
 
             <article class="dashboard-commerce-card dashboard-category-card">
               <header>
-                <div>
-                  <h2>Sales by Category</h2>
-                  <p>Revenue distribution</p>
+                <div class="dashboard-commerce-title">
+                  <span class="dashboard-commerce-title-icon"><i class="pi pi-chart-bar" aria-hidden="true"></i></span>
+                  <div>
+                    <h2>{{ 'admin.salesByCategory' | t }}</h2>
+                    <p>{{ 'admin.revenueDistribution' | t }}</p>
+                  </div>
                 </div>
               </header>
 
@@ -130,7 +147,7 @@ interface DashboardCategorySale {
               <div class="dashboard-category-list" *ngIf="!commerceError && categorySaleRows.length">
                 <div class="dashboard-category-row" *ngFor="let category of categorySaleRows; trackBy: trackCategorySale">
                   <div class="dashboard-category-topline">
-                    <span><em>{{ category.icon }}</em>{{ category.name }}</span>
+                    <span><em><i [class]="category.icon" aria-hidden="true"></i></em>{{ categoryLabel(category.name) }}</span>
                     <strong>{{ category.revenue }} <small>({{ category.percentage }}%)</small></strong>
                   </div>
                   <div class="dashboard-progress">
@@ -188,10 +205,10 @@ export class AdminDashboardComponent implements OnInit {
   commerceLoading = false
   commerceError = ''
   commercePeriod: AnalyticsPeriod = '30d'
-  commercePeriodOptions: { value: AnalyticsPeriod; label: string }[] = [
-    { value: '30d', label: '30 Days' },
-    { value: '6m', label: '6 Months' },
-    { value: '1y', label: '1 Year' }
+  commercePeriodOptions: { value: AnalyticsPeriod; labelKey: string }[] = [
+    { value: '30d', labelKey: 'admin.period30Days' },
+    { value: '6m', labelKey: 'admin.period6Months' },
+    { value: '1y', labelKey: 'admin.period1Year' }
   ]
   topProductRows: DashboardTopProduct[] = []
   categorySaleRows: DashboardCategorySale[] = []
@@ -199,8 +216,25 @@ export class AdminDashboardComponent implements OnInit {
   constructor(
     private adminData: AdminDataService,
     private analytics: AdminAnalyticsService,
-    private router: Router
+    private router: Router,
+    private i18n: TranslationService
   ) {}
+
+  categoryLabel(name: string): string {
+    const normalized = String(name || '').trim().toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '')
+    const keys: Record<string, string> = {
+      pantry: 'store.categoryPantry',
+      beverages: 'store.categoryBeverages',
+      beverage: 'store.categoryBeverages',
+      bakery: 'store.categoryBakery',
+      dairyandeggs: 'store.categoryDairyEggs',
+      freshproduce: 'store.categoryFreshProduce',
+      household: 'store.categoryHousehold',
+      snacks: 'store.categorySnacks',
+      grocery: 'admin.grocery'
+    }
+    return keys[normalized] ? this.i18n.translate(keys[normalized]) : name
+  }
 
   ngOnInit() {
     this.adminData.loadDashboardData().subscribe({
@@ -308,7 +342,7 @@ export class AdminDashboardComponent implements OnInit {
     this.analytics.getSalesByCategory(this.commercePeriod, 5).subscribe({
       next: response => {
         const total = response.categories.reduce((sum, category) => sum + Number(category.revenue || 0), 0)
-        const colors = ['#2f80ed', '#2ecc71', '#a855f7', '#f97316', '#ec4899']
+        const colors = ['#08775b', '#15906f', '#2aa786', '#55b99e', '#8acdbc']
         this.categorySaleRows = response.categories.map((category, index) => ({
           name: category.categoryName,
           revenue: this.money(category.revenue),
@@ -341,24 +375,23 @@ export class AdminDashboardComponent implements OnInit {
 
   private productIcon(name: string): string {
     const lower = name.toLowerCase()
-    if (lower.includes('milk') || lower.includes('dairy')) return '🥛'
-    if (lower.includes('bread') || lower.includes('bakery')) return '🍞'
-    if (lower.includes('egg')) return '🥚'
-    if (lower.includes('banana')) return '🍌'
-    if (lower.includes('chicken') || lower.includes('meat')) return '🍗'
-    return '🛒'
+    if (lower.includes('milk') || lower.includes('dairy')) return 'pi pi-circle-fill'
+    if (lower.includes('bread') || lower.includes('bakery')) return 'pi pi-shopping-bag'
+    if (lower.includes('egg')) return 'pi pi-circle'
+    if (lower.includes('banana') || lower.includes('produce')) return 'pi pi-sparkles'
+    return 'pi pi-box'
   }
 
   private categoryIcon(name: string): string {
     const lower = name.toLowerCase()
-    if (lower.includes('dairy')) return '🥛'
-    if (lower.includes('bakery')) return '🍞'
-    if (lower.includes('drink') || lower.includes('beverage')) return '🥤'
-    if (lower.includes('meat') || lower.includes('seafood')) return '🥩'
-    return '🛒'
+    if (lower.includes('dairy')) return 'pi pi-circle'
+    if (lower.includes('bakery')) return 'pi pi-shopping-bag'
+    if (lower.includes('drink') || lower.includes('beverage')) return 'pi pi-filter'
+    if (lower.includes('produce')) return 'pi pi-sparkles'
+    return 'pi pi-tag'
   }
 
   private productTrend(index: number): string {
-    return ['↗ +12%', '↗ +8%', '↗ +15%', '↘ -3%', '↗ +5%'][index] || '↗ +4%'
+    return ['+12%', '+8%', '+15%', '-3%', '+5%'][index] || '+4%'
   }
 }

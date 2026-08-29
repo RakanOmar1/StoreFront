@@ -74,10 +74,10 @@ export class UserModel {
     const name = user.name || `${firstname} ${lastname}`.trim()
 
     const result = await pool.query(
-      `INSERT INTO users (name, firstname, lastname, email, phone, role, password_digest)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
-       RETURNING id, name, firstname, lastname, email, phone, role, is_active, created_at, updated_at`,
-      [name, firstname, lastname, user.email || null, user.phone || null, user.role || 'CUSTOMER', passwordDigest]
+      `INSERT INTO users (name, firstname, lastname, email, phone, address, city, role, password_digest)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+       RETURNING id, name, firstname, lastname, email, phone, address, city, role, is_active, created_at, updated_at`,
+      [name, firstname, lastname, user.email || null, user.phone || null, user.address || null, user.city || null, user.role || 'CUSTOMER', passwordDigest]
     )
     return result.rows[0]
   }

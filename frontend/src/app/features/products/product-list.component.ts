@@ -61,9 +61,9 @@ type StoreProduct = Product & {
       (touchstart)="departmentStripPaused = true"
       (touchend)="departmentStripPaused = false"
     >
-      <button type="button" *ngFor="let brand of brandTiles; trackBy: trackBrand" (click)="openDepartment(brand)">
-        <span><i [class]="brand.icon" aria-hidden="true"></i></span>
-        <strong>{{ brand.labelKey | t }}</strong>
+      <button type="button" *ngFor="let categoryTile of departmentTiles; trackBy: trackBrand" (click)="openDepartment(categoryTile)">
+        <span><i [class]="categoryTile.icon" aria-hidden="true"></i></span>
+        <strong>{{ categoryTile.labelKey | t }}</strong>
       </button>
     </section>
 
@@ -71,11 +71,11 @@ type StoreProduct = Product & {
       *ngIf="products.length > 0"
       class="featured-carousel-card market-featured-card"
       [class.featured-carousel-card--static]="!shouldRunFeaturedCarousel"
-      [attr.dir]="currentLang === 'ar' ? 'rtl' : 'ltr'"
+      dir="ltr"
       (mouseenter)="pauseFeaturedCarousel()"
       (mouseleave)="resumeFeaturedCarousel()"
     >
-      <div class="featured-carousel-heading">
+      <div class="featured-carousel-heading" [attr.dir]="currentLang === 'ar' ? 'rtl' : 'ltr'">
         <div>
           <p class="eyebrow">{{ 'store.featuredPicks' | t }}</p>
           <h2>{{ 'store.freshFrom' | t }}</h2>
@@ -93,11 +93,11 @@ type StoreProduct = Product & {
         [showIndicators]="shouldRunFeaturedCarousel"
         [autoplayInterval]="shouldRunFeaturedCarousel ? featuredAutoplayDelay : 0"
         [responsiveOptions]="responsiveOptions"
-        [styleClass]="currentLang === 'ar' ? 'featured-carousel featured-carousel--rtl' : 'featured-carousel'"
+        styleClass="featured-carousel"
         (onPage)="scheduleFeaturedAutoplay()"
       >
         <ng-template let-product pTemplate="item">
-          <article class="featured-product-card">
+          <article class="featured-product-card" [attr.dir]="currentLang === 'ar' ? 'rtl' : 'ltr'">
             <div class="featured-product-media" [ngClass]="product.viewTone">
               <img [src]="product.url" [alt]="product.name" />
               <p-tag
@@ -121,40 +121,45 @@ type StoreProduct = Product & {
       </p-carousel>
     </section>
 
-    <app-product-filters
-      *ngIf="filtersLoaded"
-      [categories]="categories"
-      [selectedCategory]="selectedCategory"
-      [searchTerm]="searchTerm"
-      [priceLimit]="priceLimit"
-      [maxProductPrice]="maxProductPrice"
-      (searchTermChange)="updateSearchTerm($event)"
-      (priceLimitChange)="updatePriceLimit($event)"
-      (categorySelected)="selectCategory($event)"
-      (cleared)="clearFilters()"
-    ></app-product-filters>
+    <div class="catalog-layout" [attr.dir]="currentLang === 'ar' ? 'rtl' : 'ltr'">
+      <aside class="catalog-filters" *ngIf="filtersLoaded">
+        <app-product-filters
+          [categories]="categories"
+          [selectedCategory]="selectedCategory"
+          [searchTerm]="searchTerm"
+          [priceLimit]="priceLimit"
+          [maxProductPrice]="maxProductPrice"
+          (searchTermChange)="updateSearchTerm($event)"
+          (priceLimitChange)="updatePriceLimit($event)"
+          (categorySelected)="selectCategory($event)"
+          (cleared)="clearFilters()"
+        ></app-product-filters>
+      </aside>
 
-    <div class="market-section-heading" *ngIf="products.length > 0">
-      <div>
-        <p class="eyebrow">{{ 'store.catalog' | t }}</p>
-        <h2>{{ 'store.shopCollection' | t }}</h2>
-      </div>
-      <span>{{ products.length }} {{ 'store.visible' | t }}</span>
+      <section class="catalog-results">
+        <div class="market-section-heading" *ngIf="products.length > 0">
+          <div>
+            <p class="eyebrow">{{ 'store.catalog' | t }}</p>
+            <h2>{{ 'store.shopCollection' | t }}</h2>
+          </div>
+          <span>{{ products.length }} {{ 'store.visible' | t }}</span>
+        </div>
+
+        <div *ngIf="loading && products.length === 0" class="state-card">{{ 'store.loadingProducts' | t }}</div>
+        <div *ngIf="error" class="state-card error">{{ error }}</div>
+        <div *ngIf="!loading && !error && products.length === 0" class="state-card">{{ 'store.noMatches' | t }}</div>
+
+        <app-product-grid
+          *ngIf="!error && products.length > 0"
+          [products]="products"
+          [cartQuantities]="cartQuantities"
+          [addedProductId]="addedProductId"
+          (addToCart)="add($event)"
+        ></app-product-grid>
+
+        <div *ngIf="loadingMore" class="state-card loading-more">{{ 'store.loadingMore' | t }}</div>
+      </section>
     </div>
-
-    <div *ngIf="loading && products.length === 0" class="state-card">{{ 'store.loadingProducts' | t }}</div>
-    <div *ngIf="error" class="state-card error">{{ error }}</div>
-    <div *ngIf="!loading && !error && products.length === 0" class="state-card">{{ 'store.noMatches' | t }}</div>
-
-    <app-product-grid
-      *ngIf="!error && products.length > 0"
-      [products]="products"
-      [cartQuantities]="cartQuantities"
-      [addedProductId]="addedProductId"
-      (addToCart)="add($event)"
-    ></app-product-grid>
-
-    <div *ngIf="loadingMore" class="state-card loading-more">{{ 'store.loadingMore' | t }}</div>
 
     <a *ngIf="cartItemCount > 0" class="mobile-cart-summary" routerLink="/cart">
       <span>
@@ -215,17 +220,6 @@ export class ProductListComponent implements OnInit, OnDestroy {
       numScroll: 1
     }
   ]
-  brandTiles = [
-    { name: 'Fresh Market', labelKey: 'store.departmentFreshMarket', icon: 'pi pi-shopping-bag', category: 'produce' },
-    { name: 'Bakery', labelKey: 'store.departmentBakery', icon: 'pi pi-box', category: 'bakery' },
-    { name: 'Dairy', labelKey: 'store.departmentDairy', icon: 'pi pi-star', category: 'dairy' },
-    { name: 'Pantry', labelKey: 'store.departmentPantry', icon: 'pi pi-tags', category: 'pantry' },
-    { name: 'Drinks', labelKey: 'store.departmentDrinks', icon: 'pi pi-shopping-cart', category: 'drinks' },
-    { name: 'Household', labelKey: 'store.departmentHousehold', icon: 'pi pi-home', category: 'household' },
-    { name: 'Personal Care', labelKey: 'store.departmentPersonalCare', icon: 'pi pi-heart', category: 'personal' },
-    { name: 'Weekly Deals', labelKey: 'store.departmentWeeklyDeals', icon: 'pi pi-percentage', category: 'all' }
-  ]
-
   constructor(
     private productService: ProductService,
     private cart: CartService,
@@ -235,6 +229,18 @@ export class ProductListComponent implements OnInit, OnDestroy {
 
   get currentLang(): string {
     return this.translations.currentLanguage
+  }
+
+  get departmentTiles(): Array<{ name: string; labelKey: string; icon: string; category: string }> {
+    return [
+      { name: 'all', labelKey: 'common.all', icon: 'pi pi-th-large', category: 'all' },
+      ...this.categories.map(category => ({
+        name: category,
+        labelKey: this.categoryTranslationKey(category),
+        icon: this.categoryIcon(category),
+        category
+      }))
+    ]
   }
 
   get shouldRunFeaturedCarousel(): boolean {
@@ -400,6 +406,34 @@ export class ProductListComponent implements OnInit, OnDestroy {
 
   trackBrand(index: number, brand: { name: string }): string {
     return brand.name
+  }
+
+  private categoryTranslationKey(category: string): string {
+    const keys: Record<string, string> = {
+      'bakery': 'store.departmentBakery',
+      'beverages': 'store.departmentDrinks',
+      'dairy & eggs': 'store.categoryDairyEggs',
+      'fresh produce': 'store.categoryFreshProduce',
+      'household': 'store.departmentHousehold',
+      'pantry': 'store.departmentPantry',
+      'snacks': 'store.categorySnacks'
+    }
+
+    return keys[category.toLowerCase()] || category
+  }
+
+  private categoryIcon(category: string): string {
+    const icons: Record<string, string> = {
+      'bakery': 'pi pi-box',
+      'beverages': 'pi pi-shopping-cart',
+      'dairy & eggs': 'pi pi-star',
+      'fresh produce': 'pi pi-shopping-bag',
+      'household': 'pi pi-home',
+      'pantry': 'pi pi-tags',
+      'snacks': 'pi pi-heart'
+    }
+
+    return icons[category.toLowerCase()] || 'pi pi-tag'
   }
 
   loadProducts(reset: boolean) {

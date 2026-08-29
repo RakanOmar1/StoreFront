@@ -80,12 +80,54 @@ import { TranslationService } from '../../core/i18n/translation.service'
         [columnDefs]="columns"
         [defaultColDef]="defaultColDef"
         [pagination]="true"
+        [enableRtl]="isRtl"
         [paginationPageSize]="pageSize"
         [paginationPageSizeSelector]="false"
         [rowHeight]="52"
         [headerHeight]="46"
         (rowDoubleClicked)="openRow($event.data)"
       />
+
+      <section *ngIf="filteredRows.length" class="admin-mobile-records" aria-label="Mobile records">
+        <article
+          *ngFor="let row of mobileRows"
+          class="admin-mobile-record-card"
+          tabindex="0"
+          (click)="openRow(row)"
+          (keydown.enter)="openRow(row)"
+        >
+          <header>
+            <span class="admin-mobile-record-icon"><i class="pi pi-file" aria-hidden="true"></i></span>
+            <div>
+              <small>{{ mobilePrimaryColumn.headerName || mobilePrimaryColumn.field }}</small>
+              <strong>{{ mobileValue(row, mobilePrimaryColumn) }}</strong>
+            </div>
+            <i class="pi pi-chevron-right admin-mobile-record-arrow" aria-hidden="true"></i>
+          </header>
+
+          <dl>
+            <div *ngFor="let column of mobileDetailColumns">
+              <dt>{{ column.headerName || column.field }}</dt>
+              <dd>{{ mobileValue(row, column) }}</dd>
+            </div>
+          </dl>
+
+          <button type="button" (click)="$event.stopPropagation(); openRow(row)">
+            {{ 'common.view' | t }}
+            <i class="pi pi-arrow-right" aria-hidden="true"></i>
+          </button>
+        </article>
+
+        <nav *ngIf="mobileTotalPages > 1" class="admin-mobile-pagination" aria-label="Mobile pagination">
+          <button type="button" [disabled]="mobileCurrentPage === 1" (click)="mobilePage = mobileCurrentPage - 1">
+            <i class="pi pi-chevron-left" aria-hidden="true"></i>
+          </button>
+          <span>{{ mobileCurrentPage }} / {{ mobileTotalPages }}</span>
+          <button type="button" [disabled]="mobileCurrentPage === mobileTotalPages" (click)="mobilePage = mobileCurrentPage + 1">
+            <i class="pi pi-chevron-right" aria-hidden="true"></i>
+          </button>
+        </nav>
+      </section>
       <ng-template #emptyTable>
         <section class="admin-empty-state">
           <i class="pi pi-inbox" aria-hidden="true"></i>
@@ -115,9 +157,56 @@ export class AdminDataTableComponent {
   searchTerm = ''
   selectedFilter = 'all'
   pageSize = 10
+  mobilePage = 1
   pageSizeOptions = [10, 25, 50]
+  private filteredRowsCache: Record<string, unknown>[] = []
+  private filteredRowsSignature = ''
+  private filteredRowsSearch = ''
+  private filteredRowsFilter = ''
+  private filteredRowsField = ''
 
   constructor(private router: Router, private i18n: TranslationService) {}
+
+  get isRtl(): boolean {
+    return this.i18n.direction === 'rtl'
+  }
+
+  get mobileColumns(): ColDef[] {
+    return this.columns.filter(column => Boolean(column.field) && column.field !== 'actions' && !column.hide).slice(0, 5)
+  }
+
+  get mobilePrimaryColumn(): ColDef {
+    return this.mobileColumns[0] || { field: 'id', headerName: 'Record' }
+  }
+
+  get mobileDetailColumns(): ColDef[] {
+    return this.mobileColumns.slice(1)
+  }
+
+  get mobileTotalPages(): number {
+    return Math.max(1, Math.ceil(this.filteredRows.length / this.pageSize))
+  }
+
+  get mobileCurrentPage(): number {
+    return Math.min(this.mobilePage, this.mobileTotalPages)
+  }
+
+  get mobileRows(): Record<string, unknown>[] {
+    const start = (this.mobileCurrentPage - 1) * this.pageSize
+    return this.filteredRows.slice(start, start + this.pageSize)
+  }
+
+  mobileValue(row: Record<string, unknown>, column: ColDef): string {
+    const value = column.field ? row[column.field] : ''
+    if (value === null || value === undefined || value === '') return '—'
+    if (column.field === 'created_at' || column.field === 'updated_at') {
+      const timestamp = new Date(String(value))
+      return Number.isNaN(timestamp.getTime()) ? String(value) : timestamp.toLocaleDateString()
+    }
+    if (Array.isArray(value)) return value.join(', ')
+    if (typeof value === 'object') return JSON.stringify(value)
+    return String(value)
+  }
 
   defaultColDef: ColDef = {
     filter: true,
@@ -129,8 +218,22 @@ export class AdminDataTableComponent {
 
   get filteredRows(): Record<string, unknown>[] {
     const term = this.searchTerm.trim().toLowerCase()
+    const rowsSignature = JSON.stringify(this.rows)
 
-    return this.rows.filter(row => {
+    if (
+      this.filteredRowsSignature === rowsSignature
+      && this.filteredRowsSearch === term
+      && this.filteredRowsFilter === this.selectedFilter
+      && this.filteredRowsField === this.filterField
+    ) {
+      return this.filteredRowsCache
+    }
+
+    this.filteredRowsSignature = rowsSignature
+    this.filteredRowsSearch = term
+    this.filteredRowsFilter = this.selectedFilter
+    this.filteredRowsField = this.filterField
+    this.filteredRowsCache = this.rows.filter(row => {
       const matchesFilter = this.selectedFilter === 'all'
         || !this.filterField
         || String(row[this.filterField] ?? '').toLowerCase() === this.selectedFilter.toLowerCase()
@@ -145,6 +248,8 @@ export class AdminDataTableComponent {
 
       return Object.values(row).some(value => String(value ?? '').toLowerCase().includes(term))
     })
+
+    return this.filteredRowsCache
   }
 
   get filterSelectOptions(): SelectOption<string>[] {

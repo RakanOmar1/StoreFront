@@ -11,7 +11,7 @@ import { TranslatePipe } from '../../core/i18n/translate.pipe'
   template: `
     <div class="filters-card">
       <label>
-        {{ 'common.search' | t }}
+        <span class="filter-label"><i class="pi pi-search" aria-hidden="true"></i>{{ 'common.search' | t }}</span>
         <input
           type="search"
           [ngModel]="searchTerm"
@@ -21,7 +21,7 @@ import { TranslatePipe } from '../../core/i18n/translate.pipe'
       </label>
 
       <label>
-        {{ 'store.maxPrice' | t }}: {{ priceLimit | currency }}
+        <span class="filter-label"><i class="pi pi-sliders-h" aria-hidden="true"></i>{{ 'store.maxPrice' | t }} <b>{{ priceLimit | currency }}</b></span>
         <input
           type="range"
           min="0"
@@ -32,16 +32,19 @@ import { TranslatePipe } from '../../core/i18n/translate.pipe'
         />
       </label>
 
-      <div class="category-tabs" [attr.aria-label]="'store.productCategories' | t">
-        <button type="button" [class.active]="selectedCategory === 'all'" (click)="categorySelected.emit('all')">{{ 'common.all' | t }}</button>
-        <button
-          type="button"
-          *ngFor="let category of categories; trackBy: trackCategory"
-          [class.active]="selectedCategory === category"
-          (click)="categorySelected.emit(category)"
-        >
-          {{ category }}
-        </button>
+      <div class="filter-category-group">
+        <p class="filter-group-title"><i class="pi pi-th-large" aria-hidden="true"></i>{{ 'store.productCategories' | t }}</p>
+        <div class="category-tabs" [attr.aria-label]="'store.productCategories' | t">
+          <button type="button" [class.active]="selectedCategory === 'all'" (click)="categorySelected.emit('all')">{{ 'common.all' | t }}</button>
+          <button
+            type="button"
+            *ngFor="let category of categories; trackBy: trackCategory"
+            [class.active]="selectedCategory === category"
+            (click)="categorySelected.emit(category)"
+          >
+            {{ categoryTranslationKey(category) | t }}
+          </button>
+        </div>
       </div>
 
       <button type="button" (click)="cleared.emit()">{{ 'common.clearFilters' | t }}</button>
@@ -61,5 +64,19 @@ export class ProductFiltersComponent {
 
   trackCategory(index: number, category: string): string {
     return category
+  }
+
+  categoryTranslationKey(category: string): string {
+    const keys: Record<string, string> = {
+      'bakery': 'store.departmentBakery',
+      'beverages': 'store.departmentDrinks',
+      'dairy & eggs': 'store.categoryDairyEggs',
+      'fresh produce': 'store.categoryFreshProduce',
+      'household': 'store.departmentHousehold',
+      'pantry': 'store.departmentPantry',
+      'snacks': 'store.categorySnacks'
+    }
+
+    return keys[category.toLowerCase()] || category
   }
 }

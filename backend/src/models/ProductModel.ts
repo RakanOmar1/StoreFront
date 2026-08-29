@@ -113,10 +113,10 @@ export class ProductModel {
 
   async filters(): Promise<ProductFilters> {
     const categories = await pool.query(
-      `SELECT DISTINCT COALESCE(c.name, p.category) AS category
-       FROM products p
-       LEFT JOIN categories c ON c.id = p.category_id
-       WHERE COALESCE(c.name, p.category) IS NOT NULL
+      `SELECT name AS category FROM categories
+       UNION
+       SELECT category FROM products
+       WHERE category IS NOT NULL AND category_id IS NULL
        ORDER BY category`
     )
     const maxPrice = await pool.query('SELECT COALESCE(MAX(price), 0) AS max_price FROM products')

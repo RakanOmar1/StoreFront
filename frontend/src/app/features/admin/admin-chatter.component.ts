@@ -12,21 +12,25 @@ import { TranslationService } from '../../core/i18n/translation.service'
   standalone: true,
   imports: [CommonModule, FormsModule, TranslatePipe],
   template: `
-    <aside class="chatter-panel">
+    <aside class="chatter-panel" [class.is-collapsed]="collapsed">
       <div class="chatter-header">
         <div>
           <p class="eyebrow">{{ 'admin.activity' | t }}</p>
           <h2>{{ 'admin.chatter' | t }}</h2>
           <p>{{ 'admin.chatterSubtitle' | t }}</p>
         </div>
-        <button *ngIf="recordId" type="button" class="chatter-refresh" (click)="load()" [disabled]="loading">{{ 'common.refresh' | t }}</button>
+        <div class="chatter-header-actions">
+          <span *ngIf="total" class="chatter-count">{{ total }}</span>
+          <button *ngIf="recordId && !collapsed" type="button" class="chatter-refresh" (click)="load()" [disabled]="loading">{{ 'common.refresh' | t }}</button>
+          <button type="button" class="chatter-collapse" (click)="collapsed = !collapsed" [attr.aria-expanded]="!collapsed" [attr.aria-label]="'admin.orderDetail.toggleActivity' | t"><i [class]="collapsed ? 'pi pi-angle-double-left' : 'pi pi-angle-double-right'" aria-hidden="true"></i></button>
+        </div>
       </div>
 
-      <div *ngIf="!recordId" class="chatter-placeholder">
+      <div *ngIf="!recordId && !collapsed" class="chatter-placeholder">
         {{ 'admin.activityAfterCreate' | t }}
       </div>
 
-      <ng-container *ngIf="recordId">
+      <ng-container *ngIf="recordId && !collapsed">
         <form *ngIf="allowComments" class="chatter-composer" (ngSubmit)="submitMessage()">
           <textarea
             name="chatterMessage"
@@ -90,10 +94,16 @@ export class AdminChatterComponent implements OnChanges {
   page = 1
   pageSize = 20
   total = 0
+  collapsed = false
+  private collapsePreferenceInitialized = false
 
   constructor(private chatter: AdminChatterService, private i18n: TranslationService) {}
 
   ngOnChanges(changes: SimpleChanges) {
+    if (!this.collapsePreferenceInitialized && this.entityType === 'ORDER') {
+      this.collapsed = true
+      this.collapsePreferenceInitialized = true
+    }
     if (changes['entityType'] || changes['recordId']) {
       this.items = []
       this.page = 1

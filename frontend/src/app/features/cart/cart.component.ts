@@ -14,18 +14,39 @@ import { TranslationService } from '../../core/i18n/translation.service'
   template: `
   <section class="cart" *ngIf="(cart$ | async) as items">
     <div class="cart-header">
-      <div>
-        <p class="eyebrow">{{ 'cart.shoppingBag' | t }}</p>
-        <h1>{{ 'cart.title' | t }}</h1>
+      <div class="cart-heading-copy">
+        <span class="cart-heading-icon" aria-hidden="true"><i class="pi pi-shopping-cart"></i></span>
+        <div>
+          <p class="eyebrow">{{ 'cart.shoppingBag' | t }}</p>
+          <h1>{{ 'cart.title' | t }}</h1>
+        </div>
         <p class="muted">{{ 'cart.subtitle' | t }}</p>
       </div>
 
-      <a routerLink="/" class="continue-link">{{ 'cart.continueShopping' | t }}</a>
+      <a routerLink="/" class="continue-link">
+        <i class="pi pi-arrow-left" aria-hidden="true"></i>
+        <span>{{ 'cart.continueShopping' | t }}</span>
+      </a>
     </div>
 
-    <div *ngIf="items.length === 0" class="empty">
-      {{ 'cart.empty' | t }}
-      <a routerLink="/">{{ 'cart.browseProducts' | t }}</a>
+    <div *ngIf="items.length === 0" class="empty cart-empty-state">
+      <div class="cart-empty-visual" aria-hidden="true">
+        <i class="pi pi-shopping-bag"></i>
+        <span><i class="pi pi-plus"></i></span>
+      </div>
+      <div class="cart-empty-copy">
+        <h2>{{ 'cart.empty' | t }}</h2>
+        <p>{{ 'cart.subtitle' | t }}</p>
+      </div>
+      <a routerLink="/">
+        <i class="pi pi-th-large" aria-hidden="true"></i>
+        <span>{{ 'cart.browseProducts' | t }}</span>
+        <i class="pi pi-arrow-right cart-empty-arrow" aria-hidden="true"></i>
+      </a>
+      <div class="cart-empty-benefits">
+        <span><i class="pi pi-shield" aria-hidden="true"></i> {{ 'cart.checkout' | t }}</span>
+        <span><i class="pi pi-truck" aria-hidden="true"></i> {{ 'common.shipping' | t }}</span>
+      </div>
     </div>
 
     <div class="cart-layout" *ngIf="items.length > 0">

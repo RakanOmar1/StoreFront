@@ -21,6 +21,8 @@ export type OrderProduct = {
   product_id: number
   quantity: number
   price?: number
+  product_name?: string
+  category?: string | null
 }
 
 export type CheckoutPayload = {

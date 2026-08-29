@@ -14,6 +14,9 @@ import { TranslatePipe } from '../../core/i18n/translate.pipe'
     <button *ngIf="menuOpen" type="button" class="admin-sidebar-backdrop" aria-label="Close admin menu" (click)="closeMenu()"></button>
 
     <aside class="admin-sidebar" [class.is-open]="menuOpen" aria-label="Admin navigation">
+      <button type="button" class="admin-sidebar-close" aria-label="Close admin menu" (click)="closeMenu()">
+        <i class="pi pi-times" aria-hidden="true"></i>
+      </button>
       <div class="admin-sidebar-brand">
         <span>7</span>
         <div>
