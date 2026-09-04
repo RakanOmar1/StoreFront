@@ -1,6 +1,7 @@
 import request from 'supertest'
 import app from '../../server'
 import { createTables, clearTables } from '../helpers/db'
+import pool from '../../config/database'
 
 describe('Storefront API endpoints', () => {
   let token: string
@@ -21,6 +22,11 @@ describe('Storefront API endpoints', () => {
 
     token = userResponse.body.token
     userId = userResponse.body.user.id
+    await pool.query("UPDATE users SET role = 'ADMIN' WHERE id = $1", [userId])
+    const adminLogin = await request(app)
+      .post('/auth/login')
+      .send({ firstname: 'Route', password: 'pass' })
+    token = adminLogin.body.token
 
     const productResponse = await request(app)
       .post('/products')
@@ -136,6 +142,46 @@ describe('Storefront API endpoints', () => {
   it('rejects protected product writes without a token', async () => {
     const response = await request(app).post('/products').send({ name: 'Desk', price: 60 })
     expect(response.status).toBe(401)
+  })
+
+  it('prevents public role escalation and cross-account order access', async () => {
+    const customer = await request(app)
+      .post('/auth/register')
+      .send({ firstname: 'Other', lastname: 'Customer', password: 'secret', role: 'ADMIN' })
+
+    expect(customer.status).toBe(201)
+    expect(customer.body.user.role).toBe('CUSTOMER')
+
+    const catalogWrite = await request(app)
+      .post('/products')
+      .set('Authorization', `Bearer ${customer.body.token}`)
+      .send({ name: 'Forbidden product', price: 10 })
+    const foreignOrder = await request(app)
+      .get(`/orders/${orderId}`)
+      .set('Authorization', `Bearer ${customer.body.token}`)
+
+    const forbiddenOrderCreate = await request(app)
+      .post('/orders')
+      .set('Authorization', `Bearer ${customer.body.token}`)
+      .send({ status: 'PENDING', total_amount: 10 })
+    const ownOrder = await pool.query(
+      "INSERT INTO orders (user_id, status, total_amount) VALUES ($1, 'PENDING', 10) RETURNING id",
+      [customer.body.user.id]
+    )
+    const ownOrderRead = await request(app)
+      .get(`/orders/${ownOrder.rows[0].id}`)
+      .set('Authorization', `Bearer ${customer.body.token}`)
+    const forbiddenOrderUpdate = await request(app)
+      .put(`/orders/${ownOrder.rows[0].id}`)
+      .set('Authorization', `Bearer ${customer.body.token}`)
+      .send({ status: 'DELIVERED', payment_status: 'PAID' })
+
+    expect(catalogWrite.status).toBe(403)
+    expect(foreignOrder.status).toBe(403)
+    expect(forbiddenOrderCreate.status).toBe(403)
+    expect(ownOrderRead.status).toBe(200)
+    expect(Number(ownOrderRead.body.user_id)).toBe(customer.body.user.id)
+    expect(forbiddenOrderUpdate.status).toBe(403)
   })
 
   it('handles order endpoints', async () => {

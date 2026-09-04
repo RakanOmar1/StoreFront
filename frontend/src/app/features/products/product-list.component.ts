@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, ElementRef, HostListener, OnDestroy, OnInit, ViewChild } from '@angular/core'
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, HostListener, OnDestroy, OnInit, ViewChild } from '@angular/core'
 import { CommonModule } from '@angular/common'
 import { FormsModule } from '@angular/forms'
 import { RouterModule } from '@angular/router'
@@ -6,7 +6,7 @@ import { ButtonModule } from 'primeng/button'
 import { Carousel, CarouselModule } from 'primeng/carousel'
 import { TagModule } from 'primeng/tag'
 import { Subject, takeUntil } from 'rxjs'
-import { ProductService } from '../../core/services/product.service'
+import { ProductService, ProductSort } from '../../core/services/product.service'
 import { Product } from '../../shared/interfaces/product'
 import { CartService } from '../../core/services/cart.service'
 import { ProductFiltersComponent } from './product-filters.component'
@@ -53,18 +53,26 @@ type StoreProduct = Product & {
     </section>
 
     <section
-      #departmentStrip
       *ngIf="products.length > 0"
       class="brand-showcase"
-      (mouseenter)="departmentStripPaused = true"
-      (mouseleave)="departmentStripPaused = false"
-      (touchstart)="departmentStripPaused = true"
-      (touchend)="departmentStripPaused = false"
+      [class.brand-showcase--rtl]="currentLang === 'ar'"
+      [class.brand-showcase--ltr]="currentLang !== 'ar'"
+      dir="ltr"
     >
-      <button type="button" *ngFor="let categoryTile of departmentTiles; trackBy: trackBrand" (click)="openDepartment(categoryTile)">
-        <span><i [class]="categoryTile.icon" aria-hidden="true"></i></span>
-        <strong>{{ categoryTile.labelKey | t }}</strong>
-      </button>
+      <div class="department-marquee-track">
+        <div class="department-marquee-group">
+          <button type="button" *ngFor="let categoryTile of departmentMarqueeTiles" (click)="openDepartment(categoryTile)">
+            <span><i [class]="categoryTile.icon" aria-hidden="true"></i></span>
+            <strong>{{ categoryTile.labelKey | t }}</strong>
+          </button>
+        </div>
+        <div class="department-marquee-group" aria-hidden="true">
+          <button type="button" tabindex="-1" *ngFor="let categoryTile of departmentMarqueeTiles" (click)="openDepartment(categoryTile)">
+            <span><i [class]="categoryTile.icon" aria-hidden="true"></i></span>
+            <strong>{{ categoryTile.labelKey | t }}</strong>
+          </button>
+        </div>
+      </div>
     </section>
 
     <section
@@ -90,11 +98,11 @@ type StoreProduct = Product & {
         [numScroll]="1"
         [circular]="shouldRunFeaturedCarousel"
         [showNavigators]="shouldRunFeaturedCarousel"
-        [showIndicators]="shouldRunFeaturedCarousel"
+        [showIndicators]="shouldRunFeaturedCarousel && !isPhoneViewport"
         [autoplayInterval]="shouldRunFeaturedCarousel ? featuredAutoplayDelay : 0"
         [responsiveOptions]="responsiveOptions"
         styleClass="featured-carousel"
-        (onPage)="scheduleFeaturedAutoplay()"
+        (onPage)="onFeaturedPage($event)"
       >
         <ng-template let-product pTemplate="item">
           <article class="featured-product-card" [attr.dir]="currentLang === 'ar' ? 'rtl' : 'ltr'">
@@ -119,10 +127,23 @@ type StoreProduct = Product & {
           </article>
         </ng-template>
       </p-carousel>
+
+      <div
+        *ngIf="shouldRunFeaturedCarousel && isPhoneViewport"
+        class="mobile-featured-indicators"
+        role="presentation"
+        aria-hidden="true"
+      >
+        <span
+          *ngFor="let indicator of visibleFeaturedIndicators; trackBy: trackFeaturedIndicator"
+          class="mobile-featured-indicator"
+          [class.active]="indicator.active"
+        ></span>
+      </div>
     </section>
 
     <div class="catalog-layout" [attr.dir]="currentLang === 'ar' ? 'rtl' : 'ltr'">
-      <aside class="catalog-filters" *ngIf="filtersLoaded">
+      <aside class="catalog-filters catalog-filters--desktop" *ngIf="filtersLoaded">
         <app-product-filters
           [categories]="categories"
           [selectedCategory]="selectedCategory"
@@ -137,21 +158,41 @@ type StoreProduct = Product & {
       </aside>
 
       <section class="catalog-results">
+        <div class="mobile-filter-toolbar" *ngIf="filtersLoaded">
+          <button type="button" class="mobile-filter-trigger" (click)="openMobileFilters()" [attr.aria-expanded]="mobileFiltersOpen">
+            <i class="pi pi-filter" aria-hidden="true"></i>
+            <span>{{ 'store.filters' | t }}</span>
+            <b *ngIf="activeFilterCount > 0">{{ activeFilterCount }}</b>
+          </button>
+          <span class="mobile-visible-count">{{ products.length }} {{ 'store.products' | t }}</span>
+        </div>
+
         <div class="market-section-heading" *ngIf="products.length > 0">
           <div>
             <p class="eyebrow">{{ 'store.catalog' | t }}</p>
             <h2>{{ 'store.shopCollection' | t }}</h2>
           </div>
-          <span>{{ products.length }} {{ 'store.visible' | t }}</span>
+          <label class="catalog-sort">
+            <span>{{ 'store.sortBy' | t }}</span>
+            <select [(ngModel)]="sortBy" (ngModelChange)="changeSort($event)" [attr.aria-label]="'store.sortBy' | t">
+              <option value="featured">{{ 'store.sortFeatured' | t }}</option>
+              <option value="price-asc">{{ 'store.sortPriceLow' | t }}</option>
+              <option value="price-desc">{{ 'store.sortPriceHigh' | t }}</option>
+              <option value="name">{{ 'store.sortName' | t }}</option>
+            </select>
+          </label>
         </div>
 
         <div *ngIf="loading && products.length === 0" class="state-card">{{ 'store.loadingProducts' | t }}</div>
-        <div *ngIf="error" class="state-card error">{{ error }}</div>
+        <div *ngIf="error" class="state-card error">
+          <span>{{ error }}</span>
+          <button type="button" (click)="retryProducts()">{{ 'common.retry' | t }}</button>
+        </div>
         <div *ngIf="!loading && !error && products.length === 0" class="state-card">{{ 'store.noMatches' | t }}</div>
 
         <app-product-grid
           *ngIf="!error && products.length > 0"
-          [products]="products"
+          [products]="sortedProducts"
           [cartQuantities]="cartQuantities"
           [addedProductId]="addedProductId"
           (addToCart)="add($event)"
@@ -159,6 +200,39 @@ type StoreProduct = Product & {
 
         <div *ngIf="loadingMore" class="state-card loading-more">{{ 'store.loadingMore' | t }}</div>
       </section>
+    </div>
+
+    <div class="mobile-filter-shell" [class.open]="mobileFiltersOpen" [attr.aria-hidden]="!mobileFiltersOpen" *ngIf="filtersLoaded">
+      <button type="button" class="mobile-filter-backdrop" (click)="closeMobileFilters()" [attr.aria-label]="'store.closeFilters' | t"></button>
+      <aside class="mobile-filter-drawer" role="dialog" aria-modal="true" [attr.inert]="mobileFiltersOpen ? null : ''" [attr.aria-label]="'store.filters' | t" [attr.dir]="currentLang === 'ar' ? 'rtl' : 'ltr'">
+        <header class="mobile-filter-drawer-header">
+          <div>
+            <span>{{ 'store.filters' | t }}</span>
+            <small *ngIf="activeFilterCount > 0">{{ activeFilterCount }} {{ 'store.activeFilters' | t }}</small>
+          </div>
+          <button type="button" class="mobile-filter-close" (click)="closeMobileFilters()" [attr.aria-label]="'store.closeFilters' | t">
+            <i class="pi pi-times" aria-hidden="true"></i>
+          </button>
+        </header>
+        <div class="mobile-filter-drawer-body">
+          <app-product-filters
+            [categories]="categories"
+            [selectedCategory]="selectedCategory"
+            [searchTerm]="searchTerm"
+            [priceLimit]="priceLimit"
+            [maxProductPrice]="maxProductPrice"
+            (searchTermChange)="updateSearchTerm($event)"
+            (priceLimitChange)="updatePriceLimit($event)"
+            (categorySelected)="selectCategory($event)"
+            (cleared)="clearFilters()"
+          ></app-product-filters>
+        </div>
+        <footer class="mobile-filter-drawer-footer">
+          <button type="button" class="mobile-filter-apply" (click)="applyMobileFilters()">
+            {{ 'store.showResults' | t }} ({{ products.length }})
+          </button>
+        </footer>
+      </aside>
     </div>
 
     <a *ngIf="cartItemCount > 0" class="mobile-cart-summary" routerLink="/cart">
@@ -173,12 +247,6 @@ type StoreProduct = Product & {
 })
 export class ProductListComponent implements OnInit, OnDestroy {
   @ViewChild('featuredCarousel') featuredCarousel?: Carousel
-  @ViewChild('departmentStrip')
-  set departmentStrip(element: ElementRef<HTMLElement> | undefined) {
-    this.departmentStripElement = element
-    this.startDepartmentStrip()
-  }
-
   products: StoreProduct[] = []
   categories: string[] = []
   selectedCategory = 'all'
@@ -194,13 +262,8 @@ export class ProductListComponent implements OnInit, OnDestroy {
   cartQuantities: Record<number, number> = {}
   cartItemCount = 0
   cartSubtotal = 0
-  departmentStripPaused = false
   private readonly pageSize = 50
   private readonly filterDelayMs = 600
-  private departmentStripElement?: ElementRef<HTMLElement>
-  private departmentStripTimer?: number
-  private departmentScrollDirection = 1
-  private lastDepartmentScrollPosition?: number
   readonly featuredAutoplayDelay = 2000
   private readonly destroy$ = new Subject<void>()
   private filterTimer?: number
@@ -208,6 +271,11 @@ export class ProductListComponent implements OnInit, OnDestroy {
   private pendingReset = false
   private currentFeaturedVisible = 4
   private isFeaturedCarouselHovered = false
+  isPhoneViewport = false
+  featuredPageIndex = 0
+  mobileFiltersOpen = false
+  sortBy: ProductSort = 'featured'
+  private previousBodyOverflow = ''
   responsiveOptions = [
     {
       breakpoint: '1023px',
@@ -243,8 +311,41 @@ export class ProductListComponent implements OnInit, OnDestroy {
     ]
   }
 
+  get departmentMarqueeTiles(): Array<{ name: string; labelKey: string; icon: string; category: string }> {
+    const tiles = this.departmentTiles
+    // A single category set can be narrower than a wide desktop viewport.
+    // Repeating it inside each half keeps the infinite track filled at all times.
+    return [...tiles, ...tiles]
+  }
+
   get shouldRunFeaturedCarousel(): boolean {
     return this.products.length > this.currentFeaturedVisible
+  }
+
+  get activeFilterCount(): number {
+    return Number(Boolean(this.searchTerm.trim()))
+      + Number(this.selectedCategory !== 'all')
+      + Number(this.maxProductPrice > 0 && this.priceLimit < this.maxProductPrice)
+  }
+
+  get sortedProducts(): StoreProduct[] {
+    return this.products
+  }
+
+  get visibleFeaturedIndicators(): Array<{ index: number; active: boolean }> {
+    const total = this.products.length
+    if (!total) {
+      return []
+    }
+
+    const limit = Math.min(total, window.innerWidth <= 359 ? 5 : 7)
+    const activeIndex = ((this.featuredPageIndex % total) + total) % total
+    const start = activeIndex - Math.floor(limit / 2)
+
+    return Array.from({ length: limit }, (_, offset) => {
+      const index = ((start + offset) % total + total) % total
+      return { index, active: index === activeIndex }
+    })
   }
 
   ngOnInit() {
@@ -287,40 +388,10 @@ export class ProductListComponent implements OnInit, OnDestroy {
   ngOnDestroy() {
     window.clearTimeout(this.filterTimer)
     window.clearTimeout(this.featuredAutoplayRestartTimer)
-    window.clearInterval(this.departmentStripTimer)
     this.featuredCarousel?.stopAutoplay(false)
+    this.unlockPageScroll()
     this.destroy$.next()
     this.destroy$.complete()
-  }
-
-  private startDepartmentStrip(): void {
-    window.clearInterval(this.departmentStripTimer)
-
-    const strip = this.departmentStripElement?.nativeElement
-    if (!strip) {
-      return
-    }
-
-    this.departmentScrollDirection = this.currentLang === 'ar' ? -1 : 1
-    this.lastDepartmentScrollPosition = undefined
-    this.departmentStripTimer = window.setInterval(() => {
-      if (this.departmentStripPaused || strip.scrollWidth <= strip.clientWidth) {
-        return
-      }
-
-      const currentPosition = strip.scrollLeft
-      if (
-        this.lastDepartmentScrollPosition !== undefined &&
-        Math.abs(currentPosition - this.lastDepartmentScrollPosition) < 2
-      ) {
-        this.departmentScrollDirection *= -1
-      }
-
-      this.lastDepartmentScrollPosition = currentPosition
-      const tile = strip.querySelector<HTMLElement>('button')
-      const distance = (tile?.offsetWidth || 132) + 10
-      strip.scrollBy({ left: distance * this.departmentScrollDirection, behavior: 'smooth' })
-    }, 1000)
   }
 
   @HostListener('window:scroll')
@@ -335,6 +406,38 @@ export class ProductListComponent implements OnInit, OnDestroy {
   @HostListener('window:resize')
   onResize() {
     this.updateFeaturedVisible()
+
+    if (window.innerWidth >= 768 && this.mobileFiltersOpen) {
+      this.closeMobileFilters()
+    }
+  }
+
+  @HostListener('document:keydown.escape')
+  onEscape() {
+    this.closeMobileFilters()
+  }
+
+  openMobileFilters() {
+    if (window.innerWidth >= 768 || this.mobileFiltersOpen) return
+
+    this.mobileFiltersOpen = true
+    this.previousBodyOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    this.cdr.markForCheck()
+    window.setTimeout(() => document.querySelector<HTMLElement>('.mobile-filter-close')?.focus(), 0)
+  }
+
+  closeMobileFilters() {
+    if (!this.mobileFiltersOpen) return
+
+    this.mobileFiltersOpen = false
+    this.unlockPageScroll()
+    this.cdr.markForCheck()
+    window.setTimeout(() => document.querySelector<HTMLElement>('.mobile-filter-trigger')?.focus(), 0)
+  }
+
+  applyMobileFilters() {
+    this.closeMobileFilters()
   }
 
   selectCategory(category: string) {
@@ -386,6 +489,12 @@ export class ProductListComponent implements OnInit, OnDestroy {
   onFilterChange() {
     window.clearTimeout(this.filterTimer)
     this.filterTimer = window.setTimeout(() => this.loadProducts(true), this.filterDelayMs)
+  }
+
+  changeSort(sort: ProductSort) {
+    this.sortBy = sort
+    window.clearTimeout(this.filterTimer)
+    this.loadProducts(true)
   }
 
   clearFilters() {
@@ -464,11 +573,15 @@ export class ProductListComponent implements OnInit, OnDestroy {
       category: this.selectedCategory,
       maxPrice: this.priceLimit,
       limit: this.pageSize,
-      offset: reset ? 0 : this.products.length
+      offset: reset ? 0 : this.products.length,
+      sort: this.sortBy
     }).pipe(takeUntil(this.destroy$)).subscribe({
       next: products => {
         const mappedProducts = products.map(product => this.toStoreProduct(product))
         this.products = reset ? mappedProducts : [...this.products, ...mappedProducts]
+        if (reset) {
+          this.featuredPageIndex = 0
+        }
         this.hasMore = products.length === this.pageSize
         this.loading = false
         this.loadingMore = false
@@ -533,6 +646,23 @@ export class ProductListComponent implements OnInit, OnDestroy {
     this.featuredAutoplayRestartTimer = window.setTimeout(() => this.startFeaturedAutoplay(), 750)
   }
 
+  retryProducts() {
+    this.loadProducts(true)
+  }
+
+  onFeaturedPage(event: { page?: number }) {
+    if (typeof event.page === 'number') {
+      this.featuredPageIndex = event.page
+      this.cdr.markForCheck()
+    }
+
+    this.scheduleFeaturedAutoplay()
+  }
+
+  trackFeaturedIndicator(index: number, indicator: { index: number }): number {
+    return indicator.index
+  }
+
   private startFeaturedAutoplay() {
     if (this.isFeaturedCarouselHovered || !this.shouldRunFeaturedCarousel || this.featuredCarousel?.isPlaying()) {
       return
@@ -543,6 +673,7 @@ export class ProductListComponent implements OnInit, OnDestroy {
 
   private updateFeaturedVisible() {
     const width = window.innerWidth
+    this.isPhoneViewport = width < 640
     this.currentFeaturedVisible = width >= 1024 ? 4 : width >= 640 ? 2 : 1
 
     if (!this.shouldRunFeaturedCarousel) {
@@ -551,6 +682,11 @@ export class ProductListComponent implements OnInit, OnDestroy {
     }
 
     this.cdr.markForCheck()
+  }
+
+  private unlockPageScroll() {
+    document.body.style.overflow = this.previousBodyOverflow
+    this.previousBodyOverflow = ''
   }
 
   private unitPrice(product: Product): number {

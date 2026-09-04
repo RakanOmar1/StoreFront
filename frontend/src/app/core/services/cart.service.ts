@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core'
-import { BehaviorSubject, forkJoin, Observable, of } from 'rxjs'
+import { BehaviorSubject, Observable, of } from 'rxjs'
 import { catchError, map, tap } from 'rxjs/operators'
 import { Cart, CartItem } from '../../shared/interfaces/cart-item'
 import { Product } from '../../shared/interfaces/product'
@@ -80,9 +80,9 @@ export class CartService {
   }
 
   updateQuantity(productId: number, quantity: number) {
-    const amount = Number(quantity)
+    const amount = this.normalizeQuantity(quantity)
 
-    if (amount <= 0) {
+    if (amount === 0) {
       this.removeItem(productId)
       return
     }
@@ -186,18 +186,21 @@ export class CartService {
       return of([])
     }
 
-    return forkJoin(this.items.map(item => this.api.post('/cart/add', {
-      productId: item.product.id,
-      quantity: item.quantity
-    }).pipe(catchError(error => {
-      if (error?.status === 404) {
-        this.backendCartAvailable = false
-      }
-
-      return of(null)
-    })))).pipe(
+    return this.api.put<Cart>('/cart/sync', {
+      items: this.items.map(item => ({
+        productId: item.product.id,
+        quantity: item.quantity
+      }))
+    }).pipe(
       tap(() => {
         this.backendSynced = true
+      }),
+      catchError(error => {
+        if (error?.status === 404) {
+          this.backendCartAvailable = false
+        }
+        this.backendSynced = false
+        return of(null)
       })
     )
   }
@@ -208,6 +211,16 @@ export class CartService {
 
   private unitPrice(product: { price: number; finalPrice?: number }): number {
     return Number(product.finalPrice ?? product.price)
+  }
+
+  private normalizeQuantity(quantity: number): number {
+    const amount = Number(quantity)
+
+    if (!Number.isFinite(amount) || amount <= 0) {
+      return 0
+    }
+
+    return Math.min(99, Math.max(1, Math.floor(amount)))
   }
 
   private discountedLineTotal(product: Product, quantity: number): number {

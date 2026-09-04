@@ -7,6 +7,11 @@ export class OrderModel {
     return result.rows
   }
 
+  async indexByUser(userId: number): Promise<Order[]> {
+    const result = await pool.query('SELECT * FROM orders WHERE user_id = $1 ORDER BY id', [userId])
+    return result.rows
+  }
+
   async show(id: string): Promise<Order> {
     const result = await pool.query('SELECT * FROM orders WHERE id = $1', [id])
     const order = result.rows[0]

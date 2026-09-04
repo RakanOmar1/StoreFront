@@ -1,6 +1,11 @@
 import { NextFunction, Request, Response } from 'express'
 import jwt from 'jsonwebtoken'
 
+const tokenSecret = (): string => {
+  if (!process.env.TOKEN_SECRET) throw new Error('TOKEN_SECRET must be configured')
+  return process.env.TOKEN_SECRET
+}
+
 export const verifyAuthToken = (req: Request, res: Response, next: NextFunction): void => {
   try {
     const header = req.headers.authorization
@@ -11,7 +16,7 @@ export const verifyAuthToken = (req: Request, res: Response, next: NextFunction)
     }
 
     const token = header.split(' ')[1] || header
-    const decoded = jwt.verify(token, process.env.TOKEN_SECRET || 'storefront_secret') as {
+    const decoded = jwt.verify(token, tokenSecret()) as {
       id?: number
       role?: string
       user?: { id?: number; role?: string }
@@ -37,7 +42,7 @@ export const optionalAuthToken = (req: Request, res: Response, next: NextFunctio
     }
 
     const token = header.split(' ')[1] || header
-    const decoded = jwt.verify(token, process.env.TOKEN_SECRET || 'storefront_secret') as {
+    const decoded = jwt.verify(token, tokenSecret()) as {
       id?: number
       role?: string
       user?: { id?: number; role?: string }

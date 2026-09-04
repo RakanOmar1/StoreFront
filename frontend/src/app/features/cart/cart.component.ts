@@ -73,8 +73,11 @@ import { TranslationService } from '../../core/i18n/translation.service'
             <input
               type="number"
               min="1"
+              max="99"
+              inputmode="numeric"
               [ngModel]="i.quantity"
               (ngModelChange)="update(i.product.id, $event)"
+              [attr.aria-label]="('store.quantity' | t) + ': ' + i.product.name"
             />
             <button type="button" (click)="increase(i.product.id, i.quantity)">+</button>
           </div>
@@ -172,7 +175,7 @@ export class CartComponent implements OnInit {
 
   update(productId: number, qty: any) {
     const q = Number(qty)
-    if (q > 0) this.cart.updateQuantity(productId, q)
+    if (Number.isFinite(q) && q > 0) this.cart.updateQuantity(productId, q)
   }
 
   increase(productId: number, qty: number) {

@@ -43,7 +43,7 @@ export class ProductModel {
       query += ` WHERE ${conditions.join(' AND ')}`
     }
 
-    query += ' ORDER BY p.id'
+    query += ` ORDER BY ${this.sortClause(filters.sort)}`
 
     if (typeof filters.limit === 'number') {
       values.push(filters.limit)
@@ -57,6 +57,16 @@ export class ProductModel {
 
     const result = await pool.query(query, values)
     return result.rows.map(this.mapProduct)
+  }
+
+  private sortClause(sort: ProductQuery['sort']): string {
+    const clauses: Record<string, string> = {
+      featured: 'p.id ASC',
+      'price-asc': 'p.price ASC, p.id ASC',
+      'price-desc': 'p.price DESC, p.id ASC',
+      name: 'LOWER(p.name) ASC, p.id ASC'
+    }
+    return clauses[sort || 'featured'] || clauses.featured
   }
 
   async show(id: string): Promise<Product> {

@@ -38,7 +38,7 @@ export class AuthService {
   }
 
   updateProfile(userId: number | string, payload: UserUpdate): Observable<PublicUser> {
-    return this.api.put<PublicUser>(`/users/${userId}`, payload).pipe(
+    return this.api.patch<PublicUser>('/profile', payload).pipe(
       map(user => ({ ...user, ...payload })),
       tap(user => {
         localStorage.setItem(this.userKey, JSON.stringify(user))

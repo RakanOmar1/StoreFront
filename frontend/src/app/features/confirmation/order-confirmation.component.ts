@@ -65,6 +65,7 @@ type ConfirmationState = {
   `
 })
 export class OrderConfirmationComponent {
+  private readonly storageKey = 'lastOrderConfirmation'
   fullName = ''
   total = 0
   orderId?: number
@@ -76,7 +77,13 @@ export class OrderConfirmationComponent {
   message = ''
 
   constructor(private router: Router) {
-    const state = this.router.getCurrentNavigation()?.extras.state as ConfirmationState | undefined
+    const navigationState = this.router.getCurrentNavigation()?.extras.state as ConfirmationState | undefined
+    const historyState = window.history.state as ConfirmationState | undefined
+    const state = navigationState?.orderId ? navigationState : historyState?.orderId ? historyState : this.savedState()
+
+    if (state?.orderId && (navigationState?.orderId || historyState?.orderId)) {
+      sessionStorage.setItem(this.storageKey, JSON.stringify(state))
+    }
 
     this.fullName = state?.fullName || ''
     this.total = Number(state?.total) || 0
@@ -87,5 +94,13 @@ export class OrderConfirmationComponent {
     this.deliveryType = state?.deliveryType || ''
     this.deliveryAddress = state?.deliveryAddress || ''
     this.message = state?.message || ''
+  }
+
+  private savedState(): ConfirmationState | undefined {
+    try {
+      return JSON.parse(sessionStorage.getItem(this.storageKey) || '') as ConfirmationState
+    } catch {
+      return undefined
+    }
   }
 }

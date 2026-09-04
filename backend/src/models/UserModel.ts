@@ -143,7 +143,8 @@ export class UserModel {
 
   async delete(id: string): Promise<PublicUser> {
     const result = await pool.query(
-      'DELETE FROM users WHERE id = $1 RETURNING id, name, firstname, lastname, email, phone, role, is_active, created_at, updated_at',
+      `UPDATE users SET is_active = FALSE, updated_at = NOW() WHERE id = $1
+       RETURNING id, name, firstname, lastname, email, phone, role, is_active, created_at, updated_at`,
       [id]
     )
     return result.rows[0]

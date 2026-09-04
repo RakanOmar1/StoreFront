@@ -9,12 +9,18 @@ type AuthRequest = Request & { user?: { id?: number; role?: string } }
 export class ProductController {
   async index(req: Request, res: Response): Promise<void> {
     try {
+      const sort = optionalSort(req.query.sort)
+      if (req.query.sort !== undefined && !sort) {
+        res.status(400).json('Invalid product sort')
+        return
+      }
       res.json(await model.index({
         search: optionalString(req.query.search),
         category: optionalCategory(req.query.category),
         maxPrice: optionalNumber(req.query.maxPrice),
         limit: optionalNumber(req.query.limit, 100),
-        offset: optionalNumber(req.query.offset)
+        offset: optionalNumber(req.query.offset),
+        sort
       }))
     } catch (error) {
       res.status(500).json('Could not get products')
@@ -89,6 +95,12 @@ export class ProductController {
       res.status(500).json('Could not get popular products')
     }
   }
+}
+
+function optionalSort(value: unknown): 'featured' | 'price-asc' | 'price-desc' | 'name' | undefined {
+  return typeof value === 'string' && ['featured', 'price-asc', 'price-desc', 'name'].includes(value)
+    ? value as 'featured' | 'price-asc' | 'price-desc' | 'name'
+    : undefined
 }
 
 function optionalString(value: unknown): string | undefined {

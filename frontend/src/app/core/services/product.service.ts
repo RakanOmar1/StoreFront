@@ -11,7 +11,10 @@ export interface ProductQuery {
   maxPrice?: number
   limit?: number
   offset?: number
+  sort?: ProductSort
 }
+
+export type ProductSort = 'featured' | 'price-asc' | 'price-desc' | 'name'
 
 export interface ProductFilters {
   categories: string[]
@@ -110,6 +113,10 @@ export class ProductService {
 
     if (typeof query.offset === 'number') {
       params = params.set('offset', String(query.offset))
+    }
+
+    if (query.sort) {
+      params = params.set('sort', query.sort)
     }
 
     return params

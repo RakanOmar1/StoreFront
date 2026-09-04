@@ -18,7 +18,10 @@ type ProductTab = 'description' | 'specifications' | 'reviews' | 'shipping'
   template: `
   <section class="product-detail-page">
     <div *ngIf="loading" class="state-card">{{ 'store.loadingProduct' | t }}</div>
-    <div *ngIf="error" class="state-card error">{{ error }}</div>
+    <div *ngIf="error" class="state-card error">
+      <span>{{ error }}</span>
+      <button type="button" (click)="retry()">{{ 'common.retry' | t }}</button>
+    </div>
 
     <ng-container *ngIf="product">
       <nav class="product-breadcrumb" aria-label="Breadcrumb">
@@ -113,7 +116,7 @@ type ProductTab = 'description' | 'specifications' | 'reviews' | 'shipping'
               <span class="purchase-label">{{ 'store.quantity' | t }}</span>
               <div class="stepper" [attr.aria-label]="'store.quantitySelector' | t">
                 <button type="button" (click)="decreaseQuantity()" [attr.aria-label]="'store.decreaseQuantity' | t">-</button>
-                <input type="number" [(ngModel)]="quantity" min="1" />
+                <input type="number" [(ngModel)]="quantity" min="1" max="99" inputmode="numeric" [attr.aria-label]="'store.quantity' | t" />
                 <button type="button" (click)="increaseQuantity()" [attr.aria-label]="'store.increaseQuantity' | t">+</button>
               </div>
             </div>
@@ -430,10 +433,15 @@ export class ProductDetailsComponent {
       return
     }
 
-    this.quantity = Math.max(1, Number(this.quantity) || 1)
+    this.quantity = Math.min(99, Math.max(1, Math.floor(Number(this.quantity) || 1)))
     this.cart.addToCart(this.product, this.quantity)
     this.added = true
     window.setTimeout(() => this.added = false, 1200)
+  }
+
+  retry() {
+    const id = this.route.snapshot.paramMap.get('id')
+    if (id) this.loadProduct(id)
   }
 
   private loadRelated(product: Product) {

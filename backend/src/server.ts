@@ -18,13 +18,26 @@ import { ensureDefaultAdmin } from './seed/defaultAdmin'
 const app: express.Application = express()
 const port = Number(process.env.PORT) || 3000
 
-app.use(bodyParser.json())
+app.disable('x-powered-by')
+app.use(bodyParser.json({ limit: '1mb' }))
 app.use('/uploads', express.static('uploads'))
 
 app.use((req: Request, res: Response, next) => {
-  res.header('Access-Control-Allow-Origin', '*')
+  const configuredOrigins = (process.env.CORS_ORIGINS || 'http://localhost:4200')
+    .split(',')
+    .map(origin => origin.trim())
+    .filter(Boolean)
+  const requestOrigin = req.headers.origin
+
+  if (requestOrigin && configuredOrigins.includes(requestOrigin)) {
+    res.header('Access-Control-Allow-Origin', requestOrigin)
+    res.header('Vary', 'Origin')
+  }
   res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization')
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS')
+  res.header('X-Content-Type-Options', 'nosniff')
+  res.header('X-Frame-Options', 'DENY')
+  res.header('Referrer-Policy', 'no-referrer')
 
   if (req.method === 'OPTIONS') {
     return res.sendStatus(204)
@@ -35,6 +48,9 @@ app.use((req: Request, res: Response, next) => {
 
 app.get('/', (req: Request, res: Response) => {
   res.send('Storefront API')
+})
+app.get('/health', (req: Request, res: Response) => {
+  res.json({ status: 'ok' })
 })
 
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument))
@@ -62,13 +78,14 @@ app.use('/api/orders', orderRoutes)
 if (require.main === module) {
   ensureCommerceSchema()
     .then(() => ensureDefaultAdmin())
-    .catch(error => {
-      console.error('Could not ensure startup data', error)
-    })
-    .finally(() => {
+    .then(() => {
       app.listen(port, () => {
         console.log(`starting app on: 0.0.0.0:${port}`)
       })
+    })
+    .catch(error => {
+      console.error('Could not initialize Storefront API', error)
+      process.exitCode = 1
     })
 }
 

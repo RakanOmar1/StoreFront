@@ -11,7 +11,9 @@ import { TranslatePipe } from '../../core/i18n/translate.pipe'
   template: `
     <div class="filters-card">
       <label>
-        <span class="filter-label"><i class="pi pi-search" aria-hidden="true"></i>{{ 'common.search' | t }}</span>
+        <span class="filter-label">
+          <span class="filter-label-copy"><i class="pi pi-search" aria-hidden="true"></i><span>{{ 'common.search' | t }}</span></span>
+        </span>
         <input
           type="search"
           [ngModel]="searchTerm"
@@ -21,7 +23,10 @@ import { TranslatePipe } from '../../core/i18n/translate.pipe'
       </label>
 
       <label>
-        <span class="filter-label"><i class="pi pi-sliders-h" aria-hidden="true"></i>{{ 'store.maxPrice' | t }} <b>{{ priceLimit | currency }}</b></span>
+        <span class="filter-label filter-label--value">
+          <span class="filter-label-copy"><i class="pi pi-sliders-h" aria-hidden="true"></i><span>{{ 'store.maxPrice' | t }}</span></span>
+          <b>{{ priceLimit | currency }}</b>
+        </span>
         <input
           type="range"
           min="0"
@@ -33,7 +38,7 @@ import { TranslatePipe } from '../../core/i18n/translate.pipe'
       </label>
 
       <div class="filter-category-group">
-        <p class="filter-group-title"><i class="pi pi-th-large" aria-hidden="true"></i>{{ 'store.productCategories' | t }}</p>
+        <p class="filter-group-title"><span class="filter-label-copy"><i class="pi pi-th-large" aria-hidden="true"></i><span>{{ 'store.productCategories' | t }}</span></span></p>
         <div class="category-tabs" [attr.aria-label]="'store.productCategories' | t">
           <button type="button" [class.active]="selectedCategory === 'all'" (click)="categorySelected.emit('all')">{{ 'common.all' | t }}</button>
           <button

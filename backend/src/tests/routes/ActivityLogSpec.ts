@@ -1,6 +1,7 @@
 import request from 'supertest'
 import app from '../../server'
 import { clearTables, createTables } from '../helpers/db'
+import pool from '../../config/database'
 
 describe('Admin chatter activity API', () => {
   let adminToken: string
@@ -16,7 +17,11 @@ describe('Admin chatter activity API', () => {
       .post('/users')
       .send({ firstname: 'Admin', lastname: 'User', password: 'secret', role: 'ADMIN' })
 
-    adminToken = admin.body.token
+    await pool.query("UPDATE users SET role = 'ADMIN' WHERE id = $1", [admin.body.user.id])
+    const login = await request(app)
+      .post('/auth/login')
+      .send({ firstname: 'Admin', password: 'secret' })
+    adminToken = login.body.token
   })
 
   afterAll(async () => {

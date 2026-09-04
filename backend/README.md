@@ -23,13 +23,19 @@ Required variables:
 | `POSTGRES_DB` | `storefront` | Development database name |
 | `POSTGRES_TEST_DB` | `storefront_test` | Test database name |
 | `POSTGRES_USER` | `postgres` | PostgreSQL user |
-| `POSTGRES_PASSWORD` | `0000` | PostgreSQL password |
+| `POSTGRES_PASSWORD` | `<strong database password>` | PostgreSQL password |
 | `POSTGRES_PORT` | `5432` | PostgreSQL port |
-| `BCRYPT_PASSWORD` | `storefront_pepper` | Pepper used when hashing passwords |
+| `BCRYPT_PASSWORD` | `<strong unique password pepper>` | Required password pepper; no default is provided |
 | `SALT_ROUNDS` | `10` | bcrypt salt rounds |
-| `TOKEN_SECRET` | `storefront_secret` | JWT signing secret |
+| `TOKEN_SECRET` | `<strong unique JWT secret>` | Required JWT signing secret; no default is provided |
 | `PORT` | `3000` | Express server port |
 | `ENV` | `test` | Optional. Set to `test` to use `POSTGRES_TEST_DB`; otherwise the app uses `POSTGRES_DB`. |
+| `DEFAULT_ADMIN_EMAIL` | `admin@example.com` | Optional initial-admin bootstrap email; use only together with `DEFAULT_ADMIN_PASSWORD` |
+| `DEFAULT_ADMIN_PASSWORD` | `<strong unique password>` | Optional initial-admin bootstrap password; use only together with `DEFAULT_ADMIN_EMAIL` |
+
+The JWT secret (`TOKEN_SECRET`) and password pepper (`BCRYPT_PASSWORD`) must be explicitly configured. Production secrets must be strong, unique, and supplied through a secret manager or another environment-specific mechanism outside source control. Real credentials must never be committed.
+
+Default admin bootstrap is optional and environment-driven. It runs only when both `DEFAULT_ADMIN_EMAIL` and `DEFAULT_ADMIN_PASSWORD` are configured and no user with that email exists. Startup never resets or replaces an existing administrator's password.
 
 ## Install
 
@@ -60,7 +66,7 @@ psql -U postgres
 Create the database user and databases:
 
 ```sql
-CREATE USER storefront_user WITH PASSWORD '0000';
+CREATE USER storefront_user WITH PASSWORD '<strong unique database password>';
 CREATE DATABASE storefront;
 CREATE DATABASE storefront_test;
 GRANT ALL PRIVILEGES ON DATABASE storefront TO storefront_user;
@@ -81,7 +87,7 @@ Update `.env` if you use this user:
 
 ```env
 POSTGRES_USER=storefront_user
-POSTGRES_PASSWORD=0000
+POSTGRES_PASSWORD=<strong unique database password>
 ```
 
 Create the development tables:

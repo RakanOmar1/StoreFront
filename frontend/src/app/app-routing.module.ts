@@ -15,7 +15,7 @@ import { AdminCrudPageComponent } from './features/admin/admin-crud-page.compone
 import { AdminGuard } from './core/guards/admin.guard'
 import { UnsavedChangesGuard } from './core/guards/unsaved-changes.guard'
 
-const routes: Routes = [
+export const appRoutes: Routes = [
   { path: '', redirectTo: 'products', pathMatch: 'full' },
   { path: 'products', component: ProductListComponent },
   { path: 'products/:id', component: ProductDetailsComponent },
@@ -54,11 +54,12 @@ const routes: Routes = [
   { path: 'admin/users/:id/edit', component: AdminCrudPageComponent, canActivate: [AuthGuard, AdminGuard], canDeactivate: [UnsavedChangesGuard], data: { entity: 'users', mode: 'edit' } },
   { path: 'admin/users/:id/delete', component: AdminCrudPageComponent, canActivate: [AuthGuard, AdminGuard], data: { entity: 'users', mode: 'delete' } },
   { path: 'auth/login', component: LoginComponent },
-  { path: 'auth/register', component: RegisterComponent }
+  { path: 'auth/register', component: RegisterComponent },
+  { path: '**', redirectTo: 'products' }
 ]
 
 @NgModule({
-  imports: [RouterModule.forRoot(routes)],
+  imports: [RouterModule.forRoot(appRoutes)],
   exports: [RouterModule]
 })
 export class AppRoutingModule {}

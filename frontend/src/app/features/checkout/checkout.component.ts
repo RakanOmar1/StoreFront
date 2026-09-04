@@ -1,6 +1,7 @@
 import { Component } from '@angular/core'
 import { CommonModule } from '@angular/common'
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms'
+import { Subject, takeUntil } from 'rxjs'
 import { Router, RouterModule } from '@angular/router'
 import { switchMap } from 'rxjs/operators'
 import { DropdownModule } from 'primeng/dropdown'
@@ -152,7 +153,7 @@ export class CheckoutComponent {
   ]
   paymentOptions: SelectOption<'CASH' | 'ONLINE'>[] = [
     { value: 'CASH', label: 'Cash' },
-    { value: 'ONLINE', label: 'Online' }
+    { value: 'ONLINE', label: 'Online (payment remains pending)' }
   ]
   items = this.cart.getItems()
   subtotal = this.cart.subtotal()
@@ -163,6 +164,7 @@ export class CheckoutComponent {
   success = false
   error: string | null = null
   private user = this.auth.getCurrentUser()
+  private readonly destroy$ = new Subject<void>()
 
   f = this.fb.group({
     fullName: [this.checkoutName(), [Validators.required, Validators.minLength(3)]],
@@ -181,13 +183,32 @@ export class CheckoutComponent {
     private router: Router,
     private i18n: TranslationService
   ) {
-    this.cart.cart$.subscribe(items => {
+    this.cart.cart$.pipe(takeUntil(this.destroy$)).subscribe(items => {
       this.items = items
       this.subtotal = this.cart.subtotal()
       this.originalSubtotal = this.cart.originalSubtotal()
       this.promotionSavings = this.cart.promotionSavings()
       this.itemCount = this.cart.itemCount()
     })
+
+    this.f.controls.deliveryType.valueChanges.pipe(takeUntil(this.destroy$)).subscribe(type => {
+      this.updateDeliveryValidators(type === 'DELIVERY')
+    })
+    this.updateDeliveryValidators(this.f.controls.deliveryType.value === 'DELIVERY')
+  }
+
+  ngOnDestroy() {
+    this.destroy$.next()
+    this.destroy$.complete()
+  }
+
+  private updateDeliveryValidators(required: boolean) {
+    const addressValidators = required ? [Validators.required, Validators.minLength(5)] : []
+    const cityValidators = required ? [Validators.required] : []
+    this.f.controls.address.setValidators(addressValidators)
+    this.f.controls.city.setValidators(cityValidators)
+    this.f.controls.address.updateValueAndValidity({ emitEvent: false })
+    this.f.controls.city.updateValueAndValidity({ emitEvent: false })
   }
 
   private checkoutName(): string {

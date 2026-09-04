@@ -18,40 +18,24 @@ export const ensureDefaultAdmin = async (): Promise<void> => {
       ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP NOT NULL DEFAULT NOW();
   `)
 
-  const passwordDigest = authService.hashPassword('000000')
-
-  await pool.query(
-    `UPDATE users
-     SET name = 'admin',
-         firstname = 'admin',
-         lastname = 'admin',
-         email = COALESCE(email, 'admin@solestreet.local'),
-         role = 'ADMIN',
-         is_active = TRUE,
-         password_digest = $1,
-         updated_at = NOW()
-     WHERE LOWER(firstname) = 'admin'
-        OR LOWER(COALESCE(name, '')) = 'admin'
-        OR LOWER(COALESCE(email, '')) = 'admin@solestreet.local'`,
-    [passwordDigest]
-  )
-
+  const adminEmail = process.env.DEFAULT_ADMIN_EMAIL
+  const adminPassword = process.env.DEFAULT_ADMIN_PASSWORD
+  if (!adminEmail || !adminPassword) return
   const existing = await pool.query(
     `SELECT id FROM users
-     WHERE LOWER(firstname) = 'admin'
-        OR LOWER(COALESCE(name, '')) = 'admin'
-        OR LOWER(COALESCE(email, '')) = 'admin@solestreet.local'
+     WHERE LOWER(COALESCE(email, '')) = LOWER($1)
      ORDER BY id
      LIMIT 1`
-  )
+  , [adminEmail])
 
   if (existing.rows[0]) {
     return
   }
 
+  const passwordDigest = authService.hashPassword(adminPassword)
   await pool.query(
     `INSERT INTO users (name, firstname, lastname, email, role, is_active, password_digest)
-     VALUES ('admin', 'admin', 'admin', 'admin@solestreet.local', 'ADMIN', TRUE, $1)`,
-    [passwordDigest]
+     VALUES ('admin', 'admin', 'admin', $1, 'ADMIN', TRUE, $2)`,
+    [adminEmail, passwordDigest]
   )
 }

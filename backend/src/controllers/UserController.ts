@@ -2,6 +2,7 @@ import { Request, Response } from 'express'
 import { UserModel } from '../models/UserModel'
 import { AuthService } from '../services/AuthService'
 import { ActivityLogService } from '../services/ActivityLogService'
+import { isPrivileged } from '../middleware/authorizeResourceOwner'
 
 const model = new UserModel()
 const authService = new AuthService()
@@ -9,9 +10,9 @@ const activity = new ActivityLogService()
 type AuthRequest = Request & { user?: { id?: number; role?: string } }
 
 export class UserController {
-  async index(req: Request, res: Response): Promise<void> {
+  async index(req: AuthRequest, res: Response): Promise<void> {
     try {
-      res.json(await model.index())
+      res.json(isPrivileged(req) ? await model.index() : [await model.show(String(req.user?.id))])
     } catch (error) {
       res.status(500).json('Could not get users')
     }
@@ -32,7 +33,12 @@ export class UserController {
 
   async create(req: AuthRequest, res: Response): Promise<void> {
     try {
-      const user = await model.create(req.body)
+      if (!isValidRegistration(req.body)) {
+        res.status(400).json('Firstname, lastname, and password are required')
+        return
+      }
+      const input = req.user && isPrivileged(req) ? req.body : { ...req.body, role: 'CUSTOMER' }
+      const user = await model.create(input)
       await activity.logCreate('USER', user.id as number, req.user, user as Record<string, unknown>)
       res.status(201).json({ user, token: authService.generateToken(user) })
     } catch (error) {
@@ -43,7 +49,8 @@ export class UserController {
   async update(req: AuthRequest, res: Response): Promise<void> {
     try {
       const before = await model.show(req.params.id)
-      const user = await model.update(req.params.id, req.body)
+      const input = isPrivileged(req) ? req.body : { ...req.body, role: before?.role }
+      const user = await model.update(req.params.id, input)
       if (!user) {
         res.status(404).json('User not found')
         return
@@ -69,4 +76,10 @@ export class UserController {
       res.status(500).json('Could not delete user')
     }
   }
+}
+
+function isValidRegistration(input: Record<string, unknown>): boolean {
+  return typeof input?.firstname === 'string' && input.firstname.trim().length > 0 &&
+    typeof input?.lastname === 'string' && input.lastname.trim().length > 0 &&
+    typeof input?.password === 'string' && input.password.length > 0
 }

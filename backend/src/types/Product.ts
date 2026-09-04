@@ -29,7 +29,10 @@ export type ProductQuery = {
   maxPrice?: number
   limit?: number
   offset?: number
+  sort?: ProductSort
 }
+
+export type ProductSort = 'featured' | 'price-asc' | 'price-desc' | 'name'
 
 export type ProductFilters = {
   categories: string[]

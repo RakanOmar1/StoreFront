@@ -7,6 +7,7 @@ const controller = new CartController()
 
 routes.use(verifyAuthToken)
 routes.get('/', controller.getMyCart)
+routes.put('/sync', controller.syncItems)
 routes.post('/add', controller.addItem)
 routes.patch('/update', controller.updateItem)
 routes.delete('/remove/:productId', controller.removeItem)

@@ -19,13 +19,19 @@ Required environment variables:
 | `POSTGRES_DB` | `storefront` |
 | `POSTGRES_TEST_DB` | `storefront_test` |
 | `POSTGRES_USER` | `postgres` |
-| `POSTGRES_PASSWORD` | `0000` |
+| `POSTGRES_PASSWORD` | `<strong database password>` |
 | `POSTGRES_PORT` | `5432` |
-| `BCRYPT_PASSWORD` | `storefront_pepper` |
+| `BCRYPT_PASSWORD` | `<strong unique password pepper>` |
 | `SALT_ROUNDS` | `10` |
-| `TOKEN_SECRET` | `storefront_secret` |
+| `TOKEN_SECRET` | `<strong unique JWT secret>` |
 | `PORT` | `3000` |
 | `ENV` | `test` when running tests |
+| `DEFAULT_ADMIN_EMAIL` | Optional initial-admin bootstrap email |
+| `DEFAULT_ADMIN_PASSWORD` | Optional initial-admin bootstrap password |
+
+The JWT secret (`TOKEN_SECRET`) and password pepper (`BCRYPT_PASSWORD`) are required and must be explicitly configured. Production secrets must be strong, unique, and stored outside source control, such as in a secret manager. Real credentials must never be committed.
+
+Default admin bootstrap is optional and controlled by `DEFAULT_ADMIN_EMAIL` and `DEFAULT_ADMIN_PASSWORD`. Both values are required to create the initial administrator. If the configured administrator already exists, startup leaves the account and its password unchanged.
 
 ## Setup Commands
 
@@ -68,7 +74,7 @@ npm test
 Create PostgreSQL user and databases:
 
 ```sql
-CREATE USER storefront_user WITH PASSWORD '0000';
+CREATE USER storefront_user WITH PASSWORD '<strong unique database password>';
 CREATE DATABASE storefront;
 CREATE DATABASE storefront_test;
 GRANT ALL PRIVILEGES ON DATABASE storefront TO storefront_user;

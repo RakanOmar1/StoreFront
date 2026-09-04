@@ -115,7 +115,7 @@ export class RegisterComponent {
   f = this.fb.nonNullable.group({
     firstname: ['', Validators.required],
     lastname: ['', Validators.required],
-    email: ['', Validators.email],
+    email: ['', [Validators.required, Validators.email]],
     phone: [''],
     address: ['', Validators.required],
     city: ['', Validators.required],

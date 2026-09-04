@@ -24,7 +24,38 @@ export class CartModel {
     return result.rows[0]
   }
 
-  async updateItem(userId: string | number, productId: string | number, quantity: number): Promise<CartItem | { message: string }> {
+  async syncItems(userId: string | number, items: Array<{ productId: number; quantity: number }>): Promise<Cart> {
+    const client = await pool.connect()
+
+    try {
+      await client.query('BEGIN')
+      const existing = await client.query('SELECT * FROM carts WHERE user_id = $1', [userId])
+      const cart = existing.rows[0] || (await client.query(
+        'INSERT INTO carts (user_id) VALUES ($1) RETURNING *',
+        [userId]
+      )).rows[0]
+
+      for (const item of items) {
+        await client.query(
+          `INSERT INTO cart_items (cart_id, product_id, quantity)
+           VALUES ($1, $2, $3)
+           ON CONFLICT (cart_id, product_id)
+           DO UPDATE SET quantity = EXCLUDED.quantity, updated_at = NOW()`,
+          [cart.id, item.productId, item.quantity]
+        )
+      }
+
+      await client.query('COMMIT')
+      return this.getCart(userId)
+    } catch (error) {
+      await client.query('ROLLBACK')
+      throw error
+    } finally {
+      client.release()
+    }
+  }
+
+  async updateItem(userId: string | number, productId: string | number, quantity: number): Promise<CartItem | { message: string } | undefined> {
     if (Number(quantity) <= 0) {
       return this.removeItem(userId, productId)
     }
