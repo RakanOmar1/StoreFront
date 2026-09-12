@@ -7,9 +7,9 @@
     "npm": "11.x"
   },
   "scripts": {
-    "postinstall": "npm ci --prefix backend",
+    "postinstall": "npm ci --include=dev --prefix backend",
     "build": "npm run build --prefix backend",
-    "heroku-postbuild": "npm run build",
+    "heroku-postbuild": "npm run build && npm prune --omit=dev --prefix backend",
     "start": "npm start --prefix backend",
     "test": "npm test --prefix backend"
   }
