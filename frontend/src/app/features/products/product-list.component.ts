@@ -5,6 +5,7 @@ import { RouterModule } from '@angular/router'
 import { ButtonModule } from 'primeng/button'
 import { Carousel, CarouselModule } from 'primeng/carousel'
 import { TagModule } from 'primeng/tag'
+import { DropdownModule } from 'primeng/dropdown'
 import { Subject, takeUntil } from 'rxjs'
 import { ProductService, ProductSort } from '../../core/services/product.service'
 import { Product } from '../../shared/interfaces/product'
@@ -25,7 +26,7 @@ type StoreProduct = Product & {
 @Component({
   selector: 'app-product-list',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, CarouselModule, TagModule, ButtonModule, ProductHeroComponent, ProductFiltersComponent, ProductGridComponent, TranslatePipe],
+  imports: [CommonModule, FormsModule, RouterModule, CarouselModule, TagModule, ButtonModule, DropdownModule, ProductHeroComponent, ProductFiltersComponent, ProductGridComponent, TranslatePipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
   <section class="products-page">
@@ -172,15 +173,19 @@ type StoreProduct = Product & {
             <p class="eyebrow">{{ 'store.catalog' | t }}</p>
             <h2>{{ 'store.shopCollection' | t }}</h2>
           </div>
-          <label class="catalog-sort">
-            <span>{{ 'store.sortBy' | t }}</span>
-            <select [(ngModel)]="sortBy" (ngModelChange)="changeSort($event)" [attr.aria-label]="'store.sortBy' | t">
-              <option value="featured">{{ 'store.sortFeatured' | t }}</option>
-              <option value="price-asc">{{ 'store.sortPriceLow' | t }}</option>
-              <option value="price-desc">{{ 'store.sortPriceHigh' | t }}</option>
-              <option value="name">{{ 'store.sortName' | t }}</option>
-            </select>
-          </label>
+          <div class="catalog-sort">
+            <label for="catalog-sort-control">{{ 'store.sortBy' | t }}</label>
+            <p-dropdown
+              inputId="catalog-sort-control"
+              styleClass="catalog-sort-dropdown"
+              [options]="sortOptions"
+              optionLabel="label"
+              optionValue="value"
+              [(ngModel)]="sortBy"
+              (ngModelChange)="changeSort($event)"
+              [appendTo]="'body'"
+            ></p-dropdown>
+          </div>
         </div>
 
         <div *ngIf="loading && products.length === 0" class="state-card">{{ 'store.loadingProducts' | t }}</div>
@@ -297,6 +302,15 @@ export class ProductListComponent implements OnInit, OnDestroy {
 
   get currentLang(): string {
     return this.translations.currentLanguage
+  }
+
+  get sortOptions(): Array<{ label: string; value: ProductSort }> {
+    return [
+      { label: this.translations.translate('store.sortFeatured'), value: 'featured' },
+      { label: this.translations.translate('store.sortPriceLow'), value: 'price-asc' },
+      { label: this.translations.translate('store.sortPriceHigh'), value: 'price-desc' },
+      { label: this.translations.translate('store.sortName'), value: 'name' }
+    ]
   }
 
   get departmentTiles(): Array<{ name: string; labelKey: string; icon: string; category: string }> {

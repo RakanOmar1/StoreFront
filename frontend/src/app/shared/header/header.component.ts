@@ -20,13 +20,14 @@ import { LanguageSwitcherComponent } from '../language-switcher/language-switche
           <span class="brand-name">Stars Mall</span>
         </a>
       </strong>
-      <nav>
+      <nav [attr.aria-label]="navigationLabel">
         <div *ngIf="!(isAuthenticated$ | async)" class="guest-menu-wrap">
           <button
             type="button"
             class="guest-menu-trigger"
             aria-haspopup="menu"
             [attr.aria-expanded]="menuOpen"
+            aria-controls="guest-account-menu"
             (click)="toggleMenu($event)"
           >
             <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -38,7 +39,7 @@ import { LanguageSwitcherComponent } from '../language-switcher/language-switche
             </svg>
           </button>
 
-          <div *ngIf="menuOpen" class="account-menu guest-menu" role="menu">
+          <div *ngIf="menuOpen" id="guest-account-menu" class="account-menu guest-menu" role="menu" (keydown)="onMenuKeydown($event)">
             <a routerLink="/cart" role="menuitem" (click)="closeMenu()">
               <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M5 5h2l1.5 9.5h8.7L20 8H8" />
@@ -72,6 +73,7 @@ import { LanguageSwitcherComponent } from '../language-switcher/language-switche
             [attr.aria-label]="profileLabel"
             aria-haspopup="menu"
             [attr.aria-expanded]="menuOpen"
+            aria-controls="customer-account-menu"
             (click)="toggleMenu($event)"
           >
             <i class="pi pi-bars mobile-menu-icon" aria-hidden="true"></i>
@@ -79,7 +81,7 @@ import { LanguageSwitcherComponent } from '../language-switcher/language-switche
             <span class="mobile-menu-text">{{ 'nav.menu' | t }}</span>
           </button>
 
-          <div *ngIf="menuOpen" class="account-menu" role="menu">
+          <div *ngIf="menuOpen" id="customer-account-menu" class="account-menu" role="menu" (keydown)="onMenuKeydown($event)">
             <div class="account-menu-header">
               <span class="account-menu-avatar">{{ profileInitials }}</span>
               <span>
@@ -114,7 +116,27 @@ import { LanguageSwitcherComponent } from '../language-switcher/language-switche
         </div>
       </nav>
     </header>
-  `
+  `,
+  styles: [`
+    :host { display: block; min-width: 0; }
+    .app-header nav { min-width: 0; }
+    .account-menu { max-inline-size: min(22rem, calc(100vw - 1.5rem)); }
+    .account-menu-header { min-width: 0; }
+    .account-menu-header strong,
+    .account-menu-header small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .brand-link:focus-visible,
+    nav button:focus-visible,
+    .account-menu a:focus-visible,
+    .account-menu button:focus-visible {
+      outline: 3px solid #fbbf24;
+      outline-offset: 3px;
+    }
+    @media (max-width: 390px) {
+      .app-header { max-width: 100vw; }
+      .brand-name { overflow: hidden; text-overflow: ellipsis; }
+      .account-menu { max-inline-size: calc(100vw - 1rem); }
+    }
+  `]
 })
 export class HeaderComponent {
   cartCount$ = this.cart.cart$.pipe(
@@ -139,6 +161,18 @@ export class HeaderComponent {
     if (!this.elementRef.nativeElement.contains(event.target as Node)) {
       this.closeMenu()
     }
+  }
+
+  @HostListener('document:keydown.escape')
+  onEscape(): void {
+    if (!this.menuOpen) return
+
+    this.closeMenu()
+    this.focusMenuTrigger()
+  }
+
+  get navigationLabel(): string {
+    return 'Primary navigation'
   }
 
   get profileInitials(): string {
@@ -175,6 +209,31 @@ export class HeaderComponent {
   toggleMenu(event: MouseEvent) {
     event.stopPropagation()
     this.menuOpen = !this.menuOpen
+
+    if (this.menuOpen) {
+      setTimeout(() => this.menuItems()[0]?.focus())
+    }
+  }
+
+  onMenuKeydown(event: KeyboardEvent): void {
+    const items = this.menuItems()
+    const currentIndex = items.indexOf(document.activeElement as HTMLElement)
+    let nextIndex: number | undefined
+
+    if (event.key === 'ArrowDown') nextIndex = (currentIndex + 1) % items.length
+    if (event.key === 'ArrowUp') nextIndex = (currentIndex - 1 + items.length) % items.length
+    if (event.key === 'Home') nextIndex = 0
+    if (event.key === 'End') nextIndex = items.length - 1
+    if (event.key === 'Escape') {
+      this.onEscape()
+      event.preventDefault()
+      return
+    }
+
+    if (nextIndex !== undefined && items.length) {
+      event.preventDefault()
+      items[nextIndex].focus()
+    }
   }
 
   closeMenu() {
@@ -187,5 +246,13 @@ export class HeaderComponent {
       this.cart.clear()
       this.router.navigate(['/auth/login'])
     })
+  }
+
+  private menuItems(): HTMLElement[] {
+    return Array.from(this.elementRef.nativeElement.querySelectorAll<HTMLElement>('[role="menuitem"]'))
+  }
+
+  private focusMenuTrigger(): void {
+    this.elementRef.nativeElement.querySelector<HTMLElement>('[aria-haspopup="menu"]')?.focus()
   }
 }

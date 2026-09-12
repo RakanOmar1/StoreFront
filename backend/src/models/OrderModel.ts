@@ -18,7 +18,8 @@ export class OrderModel {
     if (!order) return order
 
     const items = await pool.query(
-      `SELECT op.id, op.order_id, op.product_id, op.quantity, op.price,
+      `SELECT op.id, op.order_id, op.product_id, op.quantity,
+              COALESCE(NULLIF(op.price, 0), p.price) AS price,
               p.name AS product_name, p.category
        FROM order_products op
        JOIN products p ON p.id = op.product_id

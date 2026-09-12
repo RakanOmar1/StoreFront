@@ -68,8 +68,15 @@ import { TranslationService } from '../../core/i18n/translation.service'
             {{ locating ? ('auth.locating' | t) : ('auth.useMyLocation' | t) }}
           </button>
           <small>{{ 'auth.locationHint' | t }}</small>
+          <small class="location-attribution">
+            {{ 'auth.locationDataBy' | t }}
+            <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a>
+          </small>
           <p *ngIf="locationMessage" class="location-status success">{{ locationMessage }}</p>
           <p *ngIf="locationError" class="location-status error">{{ locationError }}</p>
+          <button *ngIf="showRamallahFallback" type="button" class="location-manual-button" (click)="selectRamallah()">
+            {{ 'auth.selectRamallah' | t }}
+          </button>
         </div>
 
         <label>
@@ -111,6 +118,7 @@ export class RegisterComponent {
   error: string | null = null
   locationError: string | null = null
   locationMessage: string | null = null
+  showRamallahFallback = false
 
   f = this.fb.nonNullable.group({
     firstname: ['', Validators.required],
@@ -133,6 +141,7 @@ export class RegisterComponent {
   async useCurrentLocation(): Promise<void> {
     this.locationError = null
     this.locationMessage = null
+    this.showRamallahFallback = false
 
     if (!window.isSecureContext) {
       this.locationError = this.i18n.translate('auth.locationSecureContext')
@@ -147,17 +156,19 @@ export class RegisterComponent {
     this.locating = true
 
     try {
-      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject, {
-          enableHighAccuracy: true,
-          timeout: 12000,
-          maximumAge: 60000
+      const position = await this.getBestPosition()
+      const { latitude, longitude, accuracy } = position.coords
+      if (!Number.isFinite(accuracy) || accuracy > 10000) {
+        this.locationError = this.i18n.translate('auth.locationTooBroad', {
+          accuracy: Math.round(Number(accuracy) / 1000)
         })
-      })
-      const { latitude, longitude } = position.coords
+        this.showRamallahFallback = true
+        return
+      }
       const language = this.i18n.currentLanguage
       const response = await fetch(
-        `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=${language}`
+        `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(latitude)}&lon=${encodeURIComponent(longitude)}&zoom=18&addressdetails=1&accept-language=${encodeURIComponent(language)}`,
+        { headers: { Accept: 'application/json' } }
       )
 
       if (!response.ok) {
@@ -165,15 +176,21 @@ export class RegisterComponent {
       }
 
       const location = await response.json() as {
-        locality?: string
-        city?: string
-        principalSubdivision?: string
-        countryName?: string
+        display_name?: string
+        address?: {
+          city?: string
+          town?: string
+          village?: string
+          municipality?: string
+          county?: string
+          state_district?: string
+          state?: string
+          country?: string
+        }
       }
-      const city = location.city || location.locality || location.principalSubdivision || ''
-      const address = [location.locality, location.principalSubdivision, location.countryName]
-        .filter((value, index, values) => value && values.indexOf(value) === index)
-        .join(', ')
+      const city = resolveNominatimCity(location.address)
+        || ''
+      const address = location.display_name?.trim() || city
 
       if (!city) {
         throw new Error('Location did not include a city')
@@ -182,12 +199,16 @@ export class RegisterComponent {
       this.f.patchValue({ city, address: address || city })
       this.f.controls.city.markAsTouched()
       this.f.controls.address.markAsTouched()
-      this.locationMessage = this.i18n.translate('auth.locationFound')
+      this.locationMessage = this.i18n.translate('auth.locationFoundCityAccuracy', {
+        city,
+        accuracy: Math.max(1, Math.round(accuracy))
+      })
     } catch (error) {
       const geolocationError = error as GeolocationPositionError
       this.locationError = geolocationError?.code === geolocationError?.PERMISSION_DENIED
         ? this.i18n.translate('auth.locationDenied')
         : this.i18n.translate('auth.locationUnavailable')
+      this.showRamallahFallback = true
     } finally {
       this.locating = false
     }
@@ -220,4 +241,61 @@ export class RegisterComponent {
       }
     })
   }
+
+  selectRamallah(): void {
+    const city = this.i18n.currentLanguage === 'ar' ? 'رام الله' : 'Ramallah'
+    const country = this.i18n.currentLanguage === 'ar' ? 'فلسطين' : 'Palestine'
+    this.f.patchValue({ city, address: `${city}, ${country}` })
+    this.f.controls.city.markAsTouched()
+    this.f.controls.address.markAsTouched()
+    this.locationError = null
+    this.showRamallahFallback = false
+    this.locationMessage = this.i18n.translate('auth.ramallahSelected')
+  }
+
+  private getBestPosition(): Promise<GeolocationPosition> {
+    return new Promise((resolve, reject) => {
+      let best: GeolocationPosition | null = null
+      let settled = false
+      let watchId = 0
+
+      const finish = (position?: GeolocationPosition, error?: GeolocationPositionError) => {
+        if (settled) return
+        settled = true
+        navigator.geolocation.clearWatch(watchId)
+        window.clearTimeout(timer)
+        if (position) resolve(position)
+        else reject(error || new Error('No location available'))
+      }
+
+      const timer = window.setTimeout(() => finish(best || undefined), 15000)
+      watchId = navigator.geolocation.watchPosition(position => {
+        if (!best || position.coords.accuracy < best.coords.accuracy) best = position
+        if (position.coords.accuracy <= 250) finish(position)
+      }, error => finish(best || undefined, error), {
+        enableHighAccuracy: true,
+        timeout: 14000,
+        maximumAge: 0
+      })
+    })
+  }
+}
+
+export function resolveNominatimCity(address?: {
+  city?: string
+  town?: string
+  village?: string
+  municipality?: string
+  county?: string
+  state_district?: string
+  state?: string
+}): string | null {
+  return address?.city
+    || address?.town
+    || address?.village
+    || address?.municipality
+    || address?.county
+    || address?.state_district
+    || address?.state
+    || null
 }

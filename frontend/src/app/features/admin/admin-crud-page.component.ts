@@ -98,17 +98,21 @@ interface CrudField {
                       <main class="commerce-order-main">
                         <section class="commerce-section commerce-items-card">
                           <header><div><h2>{{ 'admin.orderDetail.orderItems' | t }}</h2><p>{{ 'admin.orderDetail.itemCount' | t:{ count: orderItemCount } }}</p></div></header>
-                          <div class="commerce-items-head" aria-hidden="true"><span>{{ 'admin.orderDetail.product' | t }}</span><span>{{ 'admin.orderDetail.qty' | t }}</span><span>{{ 'admin.orderDetail.unitPrice' | t }}</span><span>{{ 'admin.orderDetail.total' | t }}</span></div>
-                          <div *ngIf="orderItems.length; else noCommerceItems" class="commerce-items-list">
-                            <article *ngFor="let item of orderItems">
-                              <span class="commerce-product-icon"><i class="pi pi-box" aria-hidden="true"></i></span>
-                              <div class="commerce-product-copy"><strong>{{ item.product_name || ('Product #' + item.product_id) }}</strong><small>{{ item.category || 'Uncategorized' }}</small></div>
-                              <div class="commerce-item-cell" [attr.data-label]="'admin.orderDetail.qty' | t">{{ item.quantity }}</div>
-                              <div class="commerce-item-cell" [attr.data-label]="'admin.orderDetail.unitPrice' | t">{{ item.price || 0 | currency:'ILS' }}</div>
-                              <strong class="commerce-item-cell commerce-line-total" [attr.data-label]="'admin.orderDetail.total' | t">{{ orderItemTotal(item) | currency:'ILS' }}</strong>
-                            </article>
+                          <div class="commerce-items-table" role="table" [attr.aria-label]="'admin.orderDetail.orderItems' | t">
+                            <div class="commerce-items-head" role="row"><span role="columnheader">{{ 'admin.orderDetail.product' | t }}</span><span role="columnheader">{{ 'admin.orderDetail.qty' | t }}</span><span role="columnheader">{{ 'admin.orderDetail.unitPrice' | t }}</span><span role="columnheader">{{ 'admin.orderDetail.total' | t }}</span></div>
+                            <div *ngIf="orderItems.length; else noCommerceItems" class="commerce-items-list" role="rowgroup">
+                              <article *ngFor="let item of orderItems" role="row">
+                                <div class="commerce-product-cell" role="cell">
+                                  <span class="commerce-product-icon"><i class="pi pi-box" aria-hidden="true"></i></span>
+                                  <div class="commerce-product-copy"><strong>{{ item.product_name || ('Product #' + item.product_id) }}</strong><small>{{ item.category || 'Uncategorized' }}</small></div>
+                                </div>
+                                <div class="commerce-item-cell" role="cell" [attr.data-label]="'admin.orderDetail.qty' | t">{{ item.quantity }}</div>
+                                <div class="commerce-item-cell" role="cell" [attr.data-label]="'admin.orderDetail.unitPrice' | t">{{ item.price || 0 | currency:'ILS' }}</div>
+                                <strong class="commerce-item-cell commerce-line-total" role="cell" [attr.data-label]="'admin.orderDetail.total' | t">{{ orderItemTotal(item) | currency:'ILS' }}</strong>
+                              </article>
+                            </div>
+                            <ng-template #noCommerceItems><div class="admin-order-items-empty"><i class="pi pi-inbox" aria-hidden="true"></i> {{ 'admin.orderDetail.noProducts' | t }}</div></ng-template>
                           </div>
-                          <ng-template #noCommerceItems><div class="admin-order-items-empty"><i class="pi pi-inbox" aria-hidden="true"></i> {{ 'admin.orderDetail.noProducts' | t }}</div></ng-template>
 
                           <div class="commerce-order-totals">
                             <div><span>{{ 'admin.orderDetail.orderTotal' | t }}</span><strong>{{ form['total_amount'] || 0 | currency:'ILS' }}</strong></div>
@@ -137,7 +141,7 @@ interface CrudField {
                           <div>
                             <h2>{{ 'admin.orderDetail.fulfilment' | t }}</h2><strong>{{ formatWorkflowLabel(form['delivery_type']) }}</strong>
                             <small>{{ 'admin.orderDetail.deliveryAddress' | t }}</small><p>{{ form['delivery_address'] || ('admin.orderDetail.storePickup' | t) }}</p>
-                            <label>{{ 'admin.orderDetail.orderStatus' | t }}
+                            <label #orderStatusField>{{ 'admin.orderDetail.orderStatus' | t }}
                               <p-dropdown
                                 [ngModel]="form['status']"
                                 [options]="localizedOrderWorkflowStatuses"
@@ -147,9 +151,10 @@ interface CrudField {
                                 styleClass="commerce-status-dropdown"
                                 panelStyleClass="commerce-status-dropdown-panel"
                                 [disabled]="workflowUpdating"
+                                (onShow)="positionWorkflowMenuBelow(orderStatusField)"
                                 (onChange)="updateOrderWorkflow('status', $event.value)"
                               >
-                                <ng-template pTemplate="selectedItem" let-status><span class="commerce-dropdown-option"><i [class]="status.icon" aria-hidden="true"></i><span>{{ status.label }}</span></span></ng-template>
+                                <ng-template pTemplate="selectedItem" let-status><span [class]="'commerce-dropdown-option ' + statusTone(status.value)"><i [class]="status.icon" aria-hidden="true"></i><span>{{ status.label }}</span></span></ng-template>
                                 <ng-template pTemplate="item" let-status><span [class]="'commerce-dropdown-option ' + statusTone(status.value)"><i [class]="status.icon" aria-hidden="true"></i><span>{{ status.label }}</span><i *ngIf="form['status'] === status.value" class="pi pi-check option-check" aria-hidden="true"></i></span></ng-template>
                               </p-dropdown>
                             </label>
@@ -161,7 +166,7 @@ interface CrudField {
                           <div>
                             <h2>{{ 'admin.orderDetail.payment' | t }}</h2><strong>{{ formatWorkflowLabel(form['payment_method']) }}</strong>
                             <small>{{ 'admin.orderDetail.status' | t }}</small><span [class]="'commerce-status-badge ' + statusTone(form['payment_status'])">{{ formatWorkflowLabel(form['payment_status']) }}</span>
-                            <label>{{ 'admin.orderDetail.paymentStatus' | t }}
+                            <label #paymentStatusField>{{ 'admin.orderDetail.paymentStatus' | t }}
                               <p-dropdown
                                 [ngModel]="form['payment_status']"
                                 [options]="localizedPaymentWorkflowStatuses"
@@ -171,9 +176,10 @@ interface CrudField {
                                 styleClass="commerce-status-dropdown"
                                 panelStyleClass="commerce-status-dropdown-panel"
                                 [disabled]="workflowUpdating"
+                                (onShow)="positionWorkflowMenuBelow(paymentStatusField)"
                                 (onChange)="updateOrderWorkflow('payment_status', $event.value)"
                               >
-                                <ng-template pTemplate="selectedItem" let-status><span class="commerce-dropdown-option"><i [class]="status.icon" aria-hidden="true"></i><span>{{ status.label }}</span></span></ng-template>
+                                <ng-template pTemplate="selectedItem" let-status><span [class]="'commerce-dropdown-option ' + statusTone(status.value)"><i [class]="status.icon" aria-hidden="true"></i><span>{{ status.label }}</span></span></ng-template>
                                 <ng-template pTemplate="item" let-status><span [class]="'commerce-dropdown-option ' + statusTone(status.value)"><i [class]="status.icon" aria-hidden="true"></i><span>{{ status.label }}</span><i *ngIf="form['payment_status'] === status.value" class="pi pi-check option-check" aria-hidden="true"></i></span></ng-template>
                               </p-dropdown>
                             </label>
@@ -1028,6 +1034,26 @@ export class AdminCrudPageComponent implements OnInit, CanLeaveWithUnsavedChange
     if (['CANCELLED', 'FAILED'].includes(status)) return 'danger'
     if (status === 'REFUNDED') return 'refund'
     return 'neutral'
+  }
+
+  positionWorkflowMenuBelow(anchor: HTMLElement): void {
+    window.requestAnimationFrame(() => {
+      const trigger = anchor.querySelector<HTMLElement>('.commerce-status-dropdown')
+      const panels = Array.from(document.querySelectorAll<HTMLElement>('.commerce-status-dropdown-panel'))
+      const panel = panels.reverse().find(candidate => candidate.offsetWidth > 0 && candidate.offsetHeight > 0)
+      if (!trigger || !panel) return
+
+      const triggerRect = trigger.getBoundingClientRect()
+      const panelWidth = panel.offsetWidth
+      const isRtl = document.documentElement.dir === 'rtl'
+      const viewportLeft = isRtl ? triggerRect.right - panelWidth : triggerRect.left
+      const left = Math.max(8, Math.min(viewportLeft, window.innerWidth - panelWidth - 8))
+
+      panel.style.setProperty('top', `${triggerRect.bottom + window.scrollY + 6}px`, 'important')
+      panel.style.setProperty('left', `${left + window.scrollX}px`, 'important')
+      panel.style.setProperty('transform-origin', 'top', 'important')
+      panel.style.removeProperty('translate')
+    })
   }
 
   openAdjacentRecord(recordId: string | null) {

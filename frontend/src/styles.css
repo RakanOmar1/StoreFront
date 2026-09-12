@@ -5,6 +5,39 @@
 @import 'primeicons/primeicons.css';
 
 :root {
+  /* Storefront design foundation */
+  --store-brand: #0b5c49;
+  --store-brand-strong: #073f34;
+  --store-brand-soft: #e9f5f0;
+  --store-accent: #e21b2d;
+  --store-accent-hover: #bd1221;
+  --store-canvas: #f5f7f6;
+  --store-surface: #ffffff;
+  --store-surface-subtle: #f8faf9;
+  --store-text: #102a24;
+  --store-text-muted: #60736e;
+  --store-border: #dce7e2;
+  --store-border-strong: #bfd2ca;
+  --store-success: #087a5b;
+  --store-warning: #b85c08;
+  --store-danger: #b4232f;
+  --store-radius-sm: 8px;
+  --store-radius-md: 12px;
+  --store-radius-lg: 18px;
+  --store-shadow-sm: 0 1px 2px rgba(7, 63, 52, 0.06);
+  --store-shadow-md: 0 10px 28px rgba(7, 40, 34, 0.08);
+  --store-shadow-lg: 0 22px 54px rgba(7, 40, 34, 0.12);
+  --store-container: 1320px;
+  --store-gutter: clamp(12px, 2.4vw, 32px);
+  --store-space-1: 4px;
+  --store-space-2: 8px;
+  --store-space-3: 12px;
+  --store-space-4: 16px;
+  --store-space-5: 24px;
+  --store-space-6: 32px;
+  --store-space-7: 48px;
+  --store-control-height: 44px;
+  --store-focus: 0 0 0 3px rgba(11, 92, 73, 0.24);
   --topbar-height: 56px;
   --navbar-height: var(--topbar-height);
   --sidebar-width: 220px;
@@ -11244,6 +11277,39 @@ body:has(.products-page) .language-switcher {
   white-space: nowrap;
 }
 
+html {
+  background: var(--store-canvas);
+}
+
+body {
+  min-width: 320px;
+}
+
+img,
+svg,
+video,
+canvas {
+  max-width: 100%;
+}
+
+input,
+select,
+textarea,
+button {
+  max-width: 100%;
+}
+
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--store-brand);
+  outline-offset: 3px;
+  box-shadow: var(--store-focus);
+}
+
+:where(button, .button, input, select, textarea):disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
 .products-page .department-marquee-track,
 .products-page .department-marquee-group {
   direction: ltr;
@@ -12419,22 +12485,45 @@ html[dir='rtl'] .commerce-context-card a .pi-arrow-right {
 .commerce-items-list article {
   align-items: center;
   display: grid;
-  gap: 12px;
-  grid-template-columns: minmax(220px, 1fr) 70px 110px 110px;
+  column-gap: 20px;
+  grid-template-columns: minmax(240px, 1fr) minmax(72px, 0.35fr) minmax(110px, 0.5fr) minmax(110px, 0.5fr);
+}
+
+.commerce-items-table {
+  border: 1px solid var(--admin-border-soft);
+  border-radius: 12px;
+  overflow: hidden;
 }
 
 .commerce-items-head {
+  background: #f7faf9;
   color: var(--admin-muted);
-  font-size: 0.68rem;
+  font-size: 0.72rem;
   font-weight: 800;
-  padding: 0 10px 8px 54px;
+  min-height: 42px;
+  padding: 0 16px;
+}
+
+.commerce-items-head span:not(:first-child),
+.commerce-item-cell {
+  text-align: center;
 }
 
 .commerce-items-list article {
-  border-top: 1px solid var(--admin-border-soft);
-  grid-template-columns: 42px minmax(160px, 1fr) 70px 110px 110px;
-  min-height: 72px;
-  padding: 10px;
+  background: #fff;
+  min-height: 76px;
+  padding: 10px 16px;
+  transition: background-color 160ms ease;
+}
+
+.commerce-items-list article + article { border-top: 1px solid var(--admin-border-soft); }
+.commerce-items-list article:hover { background: #fbfdfc; }
+
+.commerce-product-cell {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  min-width: 0;
 }
 
 .commerce-product-icon,
@@ -12452,8 +12541,8 @@ html[dir='rtl'] .commerce-context-card a .pi-arrow-right {
 .commerce-product-copy { display: grid; gap: 3px; min-width: 0; }
 .commerce-product-copy strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .commerce-product-copy small { color: var(--admin-muted); font-size: 0.7rem; }
-.commerce-item-cell { color: #475467; font-size: 0.82rem; }
-.commerce-line-total { color: #172033; }
+.commerce-item-cell { color: #475467; font-size: 0.84rem; font-variant-numeric: tabular-nums; }
+.commerce-line-total { color: #172033; font-weight: 800; }
 
 .commerce-order-totals {
   border-top: 1px solid var(--admin-border);
@@ -12507,11 +12596,12 @@ html[dir='rtl'] .commerce-context-card a .pi-arrow-right {
 }
 
 .commerce-status-card .commerce-status-dropdown.p-dropdown {
-  background: #f8fafb;
-  border: 1px solid var(--admin-border);
-  border-radius: 9px;
+  background: #fff;
+  border: 1px solid #cddbd6;
+  border-radius: 10px;
   box-shadow: none;
-  min-height: 40px;
+  min-height: 44px;
+  overflow: hidden;
   width: 100%;
 }
 
@@ -12533,7 +12623,7 @@ html[dir='rtl'] .commerce-context-card a .pi-arrow-right {
   font-weight: 800;
   line-height: 1.4;
   min-width: 0;
-  padding: 0.55rem 0.7rem;
+  padding: 0.55rem 0.75rem;
 }
 
 .commerce-status-dropdown .p-dropdown-label .commerce-dropdown-option {
@@ -12549,12 +12639,11 @@ html[dir='rtl'] .commerce-context-card a .pi-arrow-right {
 
 .commerce-status-dropdown-panel.p-dropdown-panel {
   background: #fff;
-  border: 1px solid #d9e2e8;
+  border: 1px solid #d5e2dd;
   border-radius: 12px;
-  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.15), 0 4px 10px rgba(15, 23, 42, 0.06);
-  margin-top: 6px;
+  box-shadow: 0 16px 36px rgba(15, 48, 39, 0.16), 0 3px 10px rgba(15, 23, 42, 0.07);
   overflow: hidden;
-  padding: 0;
+  padding: 4px;
 }
 
 .commerce-status-dropdown-panel .p-dropdown-items-wrapper {
@@ -12566,34 +12655,39 @@ html[dir='rtl'] .commerce-context-card a .pi-arrow-right {
 
 .commerce-status-dropdown-panel .p-dropdown-items {
   display: grid;
-  gap: 2px;
-  padding: 7px;
+  gap: 3px;
+  padding: 2px;
 }
 
 .commerce-status-dropdown-panel .p-dropdown-item {
   align-items: center;
   background: transparent;
   border: 1px solid transparent;
-  border-radius: 9px;
+  border-radius: 8px;
   box-shadow: none !important;
   color: #344054;
   display: flex;
   margin: 0;
-  min-height: 44px;
+  min-height: 42px;
   outline: none !important;
   padding: 0;
   transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
 }
 
 .commerce-status-dropdown-panel .p-dropdown-item:not(.p-highlight):not(.p-disabled):hover {
-  background: #f5f8f7;
-  border-color: #d8e8e2;
+  background: #f3f7f5;
+  border-color: transparent;
   color: #172033;
 }
 
+.commerce-status-dropdown-panel .p-dropdown-item.p-focus:not(.p-highlight) {
+  background: #f3f7f5;
+  border-color: transparent;
+}
+
 .commerce-status-dropdown-panel .p-dropdown-item.p-highlight {
-  background: #eaf6f1;
-  border-color: #acd8ca;
+  background: #e9f5f0;
+  border-color: #b8dacd;
   color: #075f49;
 }
 
@@ -12603,7 +12697,7 @@ html[dir='rtl'] .commerce-context-card a .pi-arrow-right {
   gap: 9px;
   grid-template-columns: 24px minmax(0, 1fr) auto;
   min-width: 0;
-  padding: 0 10px;
+  padding: 0 9px;
   width: 100%;
 }
 
@@ -12647,6 +12741,10 @@ html[lang='ar'] .commerce-status-dropdown-panel .p-dropdown-item {
 .commerce-dropdown-option .option-check {
   color: #08775b;
   font-size: 0.74rem;
+}
+
+.commerce-status-dropdown .p-dropdown-label .commerce-dropdown-option .option-check {
+  display: none;
 }
 
 html[dir='rtl'] .commerce-status-dropdown-panel,
@@ -12728,8 +12826,12 @@ html[dir='rtl'] .commerce-metadata-card {
   .commerce-order-actions { flex-wrap: wrap; width: 100%; }
   .commerce-edit-order { justify-content: center; margin-inline-start: auto; }
   .commerce-items-head { display: none; }
-  .commerce-items-list article { grid-template-columns: 38px minmax(0, 1fr); padding: 12px 4px; }
-  .commerce-item-cell { align-items: center; display: flex; grid-column: 2; justify-content: space-between; }
+  .commerce-items-table { border: 0; border-radius: 0; overflow: visible; }
+  .commerce-items-list { display: grid; gap: 10px; }
+  .commerce-items-list article { border: 1px solid var(--admin-border-soft); border-radius: 10px; gap: 10px; grid-template-columns: repeat(3, minmax(0, 1fr)); padding: 12px; }
+  .commerce-items-list article + article { border-top: 1px solid var(--admin-border-soft); }
+  .commerce-product-cell { grid-column: 1 / -1; }
+  .commerce-item-cell { align-items: flex-start; display: flex; flex-direction: column; gap: 4px; text-align: start; }
   .commerce-item-cell::before { color: var(--admin-muted); content: attr(data-label); font-size: 0.68rem; font-weight: 700; }
   .commerce-order-totals { justify-content: stretch; }
   .commerce-order-totals > div { grid-template-columns: 1fr auto; }
@@ -15324,6 +15426,30 @@ html[dir='rtl'] .products-page .market-hero-message {
   text-align: right;
 }
 
+.auth-card .signup-location-block .location-attribution {
+  color: var(--store-text-muted);
+  font-size: 0.72rem;
+}
+
+.auth-card .signup-location-block .location-attribution a {
+  color: var(--store-brand);
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.auth-card .signup-location-block .location-manual-button {
+  background: var(--store-brand);
+  border: 1px solid var(--store-brand);
+  color: #fff;
+  min-height: 42px;
+  width: 100%;
+}
+
+.auth-card .signup-location-block .location-manual-button:hover {
+  background: var(--store-brand-strong);
+}
+
 
 html[dir='rtl'] .products-page .market-hero-message h1,
 html[dir='rtl'] .products-page .market-hero-message p:not(.eyebrow) {
@@ -17536,19 +17662,45 @@ html[dir='rtl'] .dashboard-period-option {
 .catalog-sort {
   display: inline-flex;
   align-items: center;
-  gap: .65rem;
+  gap: .75rem;
   color: var(--muted, #64748b);
   font-size: .875rem;
+  white-space: nowrap;
 }
 
-.catalog-sort select {
-  min-height: 2.5rem;
-  padding: .45rem 2rem .45rem .75rem;
+.catalog-sort .catalog-sort-dropdown.p-dropdown {
+  min-height: 2.65rem;
+  min-width: 13.5rem;
   border: 1px solid #d9e2ea;
   border-radius: .65rem;
   background: #fff;
   color: #172033;
-  font: inherit;
+  box-shadow: none;
+}
+
+.catalog-sort .catalog-sort-dropdown.p-dropdown:not(.p-disabled):hover {
+  border-color: var(--store-border-strong);
+}
+
+.catalog-sort .catalog-sort-dropdown.p-dropdown.p-focus {
+  border-color: var(--store-brand);
+  box-shadow: var(--store-focus);
+}
+
+.catalog-sort .catalog-sort-dropdown .p-dropdown-label {
+  padding-block: .68rem;
+  padding-inline: .85rem .35rem;
+  text-align: start;
+}
+
+.catalog-sort .catalog-sort-dropdown .p-dropdown-trigger {
+  color: var(--store-brand);
+  width: 2.65rem;
+}
+
+html[dir='rtl'] .p-dropdown-panel .p-dropdown-items {
+  direction: rtl;
+  text-align: right;
 }
 
 .state-card.error button {
@@ -17558,5 +17710,5 @@ html[dir='rtl'] .dashboard-period-option {
 @media (max-width: 639px) {
   .market-section-heading { align-items: flex-start; gap: .75rem; }
   .catalog-sort { width: 100%; justify-content: space-between; }
-  .catalog-sort select { max-width: 65%; }
+  .catalog-sort .catalog-sort-dropdown.p-dropdown { min-width: 0; width: min(68vw, 14rem); }
 }

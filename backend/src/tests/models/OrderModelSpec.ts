@@ -1,6 +1,7 @@
 import { OrderModel } from '../../models/OrderModel'
 import { ProductModel } from '../../models/ProductModel'
 import { UserModel } from '../../models/UserModel'
+import pool from '../../config/database'
 import { createTables, clearTables } from '../helpers/db'
 
 const model = new OrderModel()
@@ -55,5 +56,23 @@ describe('OrderModel', () => {
     expect(orderProduct.quantity).toBe(2)
     expect(current.length).toBe(1)
     expect(completed.length).toBe(1)
+  })
+
+  it('uses the catalog price for legacy zero-priced items without replacing saved prices', async () => {
+    const user = await userModel.create({ firstname: 'Legacy', lastname: 'Order', password: 'pass' })
+    const product = await productModel.create({ name: 'Yogurt', price: 12, category: 'dairy' })
+    const legacyOrder = await model.create({ user_id: user.id as number, status: 'PENDING' })
+    const pricedOrder = await model.create({ user_id: user.id as number, status: 'PENDING' })
+
+    await pool.query(
+      'INSERT INTO order_products (order_id, product_id, quantity, price) VALUES ($1, $2, $3, $4), ($5, $2, $6, $7)',
+      [legacyOrder.id, product.id, 2, 0, pricedOrder.id, 1, 9]
+    )
+
+    const legacy = await model.show(String(legacyOrder.id))
+    const priced = await model.show(String(pricedOrder.id))
+
+    expect(Number(legacy.items?.[0].price)).toBe(12)
+    expect(Number(priced.items?.[0].price)).toBe(9)
   })
 })

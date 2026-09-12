@@ -18,7 +18,20 @@ import { ProductCardComponent } from './product-card.component'
         (addToCart)="addToCart.emit($event)"
       ></app-product-card>
     </div>
-  `
+  `,
+  styles: [`
+    :host { display: block; min-width: 0; }
+    .product-grid { min-width: 0; align-items: stretch; }
+    @media (max-width: 479px) {
+      .product-grid { grid-template-columns: minmax(0, 1fr); gap: .875rem; }
+    }
+    @media (min-width: 480px) and (max-width: 767px) {
+      .product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .875rem; }
+    }
+    @media (min-width: 768px) and (max-width: 1099px) {
+      .product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+  `]
 })
 export class ProductGridComponent {
   @Input() products: Product[] = []
