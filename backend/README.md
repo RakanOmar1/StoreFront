@@ -146,6 +146,15 @@ Swagger UI is available at:
 http://localhost:3000/api-docs
 ```
 
+## Heroku File Storage Limitation
+
+Profile avatars are currently written to the local `uploads/` directory. A Heroku
+dyno's filesystem is ephemeral and is not shared between dynos, so uploaded files
+can disappear after a restart, redeploy, or dyno replacement. This storage is
+suitable only for temporary files on Heroku. Persistent production avatars require
+external object storage; that integration is intentionally outside the current
+deployment setup.
+
 ## Run Tests
 
 Make sure the test database exists and is reachable. The Jasmine helper sets `ENV=test`, so tests use `POSTGRES_TEST_DB`.
