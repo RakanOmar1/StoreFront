@@ -14,6 +14,7 @@ import { AdminTablePageComponent } from './features/admin/admin-table-page.compo
 import { AdminCrudPageComponent } from './features/admin/admin-crud-page.component'
 import { AdminGuard } from './core/guards/admin.guard'
 import { UnsavedChangesGuard } from './core/guards/unsaved-changes.guard'
+import { DeliveryMapPageComponent } from './features/admin/delivery-map-page.component'
 
 export const appRoutes: Routes = [
   { path: '', redirectTo: 'products', pathMatch: 'full' },
@@ -41,6 +42,7 @@ export const appRoutes: Routes = [
   { path: 'admin/promotions/:id/edit', component: AdminCrudPageComponent, canActivate: [AuthGuard, AdminGuard], canDeactivate: [UnsavedChangesGuard], data: { entity: 'promotions', mode: 'edit' } },
   { path: 'admin/promotions/:id/delete', component: AdminCrudPageComponent, canActivate: [AuthGuard, AdminGuard], data: { entity: 'promotions', mode: 'delete' } },
   { path: 'admin/orders', pathMatch: 'full', component: AdminTablePageComponent, canActivate: [AuthGuard, AdminGuard], data: { tableType: 'orders' } },
+  { path: 'admin/delivery-map', component: DeliveryMapPageComponent, canActivate: [AuthGuard, AdminGuard] },
   { path: 'admin/orders/new', component: AdminCrudPageComponent, canActivate: [AuthGuard, AdminGuard], canDeactivate: [UnsavedChangesGuard], data: { entity: 'orders', mode: 'create' } },
   { path: 'admin/orders/:id', component: AdminCrudPageComponent, canActivate: [AuthGuard, AdminGuard], data: { entity: 'orders', mode: 'view' } },
   { path: 'admin/orders/:id/edit', component: AdminCrudPageComponent, canActivate: [AuthGuard, AdminGuard], canDeactivate: [UnsavedChangesGuard], data: { entity: 'orders', mode: 'edit' } },

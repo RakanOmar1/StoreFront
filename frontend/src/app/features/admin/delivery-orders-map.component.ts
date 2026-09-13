@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common'
 import { AfterViewInit, Component, ElementRef, Input, OnChanges, OnDestroy, SimpleChanges, ViewChild } from '@angular/core'
 import * as L from 'leaflet'
+import { Router } from '@angular/router'
 import { OpenStreetMapService } from '../../core/services/openstreet-map.service'
 import { Order } from '../../shared/interfaces/order'
 
@@ -32,7 +33,7 @@ export class DeliveryOrdersMapComponent implements AfterViewInit, OnChanges, OnD
   private map?: L.Map
   private markers?: L.LayerGroup
 
-  constructor(private locations: OpenStreetMapService) {}
+  constructor(private locations: OpenStreetMapService, private router: Router) {}
 
   get deliveryOrders(): Order[] {
     return this.orders.filter(order => order.delivery_type === 'DELIVERY' && !!order.delivery_address)
@@ -74,9 +75,12 @@ export class DeliveryOrdersMapComponent implements AfterViewInit, OnChanges, OnD
       }
       const bounds = L.latLngBounds([])
       located.forEach(item => {
-        L.marker(item.location, { icon: this.markerIcon() })
+        const marker = L.marker(item.location, { icon: this.markerIcon(), title: `Open order #${item.order.id}` })
           .bindPopup(`<strong>Order #${item.order.id}</strong><br>${this.escapeHtml(item.location.address)}`)
           .addTo(this.markers as L.LayerGroup)
+        marker.on('click', () => {
+          if (item.order.id != null) this.router.navigate(['/admin/orders', item.order.id])
+        })
         bounds.extend(item.location)
       })
       if (located.length > 1) this.map.fitBounds(bounds, { padding: [48, 48], maxZoom: 16 })
