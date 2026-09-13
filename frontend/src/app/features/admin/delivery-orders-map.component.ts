@@ -57,17 +57,21 @@ export class DeliveryOrdersMapComponent implements AfterViewInit, OnChanges, OnD
     this.loading = true
 
     try {
+      this.map?.remove()
+      this.map = L.map(this.mapCanvas.nativeElement).setView({ lat: 31.9038, lng: 35.2034 }, 11)
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' }).addTo(this.map)
+      this.markers = L.layerGroup().addTo(this.map)
+      window.setTimeout(() => this.map?.invalidateSize(), 0)
       const located: Array<{ order: Order; location: { lat: number; lng: number; address: string } }> = []
       for (const order of orders) {
         try { located.push({ order, location: await this.locations.geocodeAddress(order.delivery_address as string) }) }
         catch { /* keep rendering the addresses that can be resolved */ }
       }
       if (version !== this.renderVersion) return
-      if (!located.length) throw new Error('No order addresses could be located')
-      this.map?.remove()
-      this.map = L.map(this.mapCanvas.nativeElement).setView(located[0].location, 12)
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' }).addTo(this.map)
-      this.markers = L.layerGroup().addTo(this.map)
+      if (!located.length) {
+        this.error = 'The map loaded, but none of the saved delivery addresses could be located. Add a city and street to each order address.'
+        return
+      }
       const bounds = L.latLngBounds([])
       located.forEach(item => {
         L.marker(item.location, { icon: this.markerIcon() })
@@ -76,7 +80,9 @@ export class DeliveryOrdersMapComponent implements AfterViewInit, OnChanges, OnD
         bounds.extend(item.location)
       })
       if (located.length > 1) this.map.fitBounds(bounds, { padding: [48, 48], maxZoom: 16 })
-      window.setTimeout(() => this.map?.invalidateSize(), 0)
+      else this.map.setView(located[0].location, 16)
+      const unresolved = orders.length - located.length
+      if (unresolved) this.error = `${unresolved} delivery ${unresolved === 1 ? 'address was' : 'addresses were'} not precise enough to locate.`
     } catch {
       this.error = 'OpenStreetMap could not load or the order addresses could not be located.'
     } finally {

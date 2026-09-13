@@ -3,6 +3,7 @@ import { Injectable } from '@angular/core'
 export interface MapPoint { lat: number; lng: number }
 export interface ResolvedMapLocation extends MapPoint { address: string; city: string }
 interface NominatimResult { lat?: string; lon?: string; display_name?: string; address?: Record<string, string> }
+interface PhotonFeature { geometry?: { coordinates?: [number, number] }; properties?: Record<string, string> }
 
 @Injectable({ providedIn: 'root' })
 export class OpenStreetMapService {
@@ -24,10 +25,26 @@ export class OpenStreetMapService {
     }
     const params = new URLSearchParams({ format: 'jsonv2', q: normalized, limit: '1', addressdetails: '1', 'accept-language': language })
     const matches = await this.request<NominatimResult[]>(`/search?${params.toString()}`)
-    if (!matches[0]) throw new Error('Address could not be located')
-    const resolved = this.resolve(matches[0])
+    const resolved = matches[0] ? this.resolve(matches[0]) : await this.geocodeWithPhoton(normalized, language)
     try { localStorage.setItem(cacheKey, JSON.stringify(resolved)) } catch { /* optional cache */ }
     return resolved
+  }
+
+  private async geocodeWithPhoton(address: string, language: string): Promise<ResolvedMapLocation> {
+    const params = new URLSearchParams({ q: address, limit: '1', lang: language === 'ar' ? 'en' : language })
+    const response = await fetch(`https://photon.komoot.io/api/?${params.toString()}`, { headers: { Accept: 'application/json' } })
+    if (!response.ok) throw new Error(`Photon lookup failed: ${response.status}`)
+    const payload = await response.json() as { features?: PhotonFeature[] }
+    const feature = payload.features?.[0], coordinates = feature?.geometry?.coordinates
+    if (!feature || !coordinates) throw new Error('Address could not be located')
+    const properties = feature.properties || {}
+    const formatted = [properties['name'], properties['street'], properties['city'], properties['state'], properties['country']].filter(Boolean).join(', ')
+    return {
+      lat: Number(coordinates[1]),
+      lng: Number(coordinates[0]),
+      address: formatted || address,
+      city: properties['city'] || properties['district'] || properties['state'] || ''
+    }
   }
 
   private resolve(match: NominatimResult, fallback?: MapPoint): ResolvedMapLocation {
