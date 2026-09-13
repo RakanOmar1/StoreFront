@@ -60,7 +60,7 @@ interface CrudField {
               <div *ngIf="success" class="success-message">{{ success }}</div>
 
               <ng-container *ngIf="!loading">
-                <div *ngIf="mode === 'view'" class="admin-details-card">
+                <div *ngIf="mode === 'view' || (mode === 'edit' && entity === 'orders')" class="admin-details-card">
                   <section *ngIf="entity === 'orders'" class="commerce-order-detail">
                     <div class="commerce-invoice-print-header">
                       <div><strong>7 Stars Mall</strong><span>{{ 'admin.orderDetail.orderInvoice' | t }}</span></div>
@@ -82,9 +82,11 @@ interface CrudField {
                           <span *ngIf="recordIds.length">{{ currentRecordPosition }} / {{ recordIds.length }}</span>
                           <button type="button" class="record-navigation-button" [disabled]="!nextRecordId" (click)="openAdjacentRecord(nextRecordId)" [attr.aria-label]="'admin.orderDetail.nextOrder' | t"><i class="pi pi-chevron-right" aria-hidden="true"></i></button>
                         </div>
-                        <button type="button" class="commerce-print-invoice" (click)="printInvoice()"><i class="pi pi-print" aria-hidden="true"></i> {{ 'admin.orderDetail.printInvoice' | t }}</button>
-                        <a [routerLink]="editLink" class="commerce-edit-order"><i class="pi pi-pencil" aria-hidden="true"></i> {{ 'admin.orderDetail.editOrder' | t }}</a>
-                        <details class="commerce-more-menu">
+                        <button *ngIf="mode === 'view'" type="button" class="commerce-print-invoice" (click)="printInvoice()"><i class="pi pi-print" aria-hidden="true"></i> {{ 'admin.orderDetail.printInvoice' | t }}</button>
+                        <a *ngIf="mode === 'view'" [routerLink]="editLink" class="commerce-edit-order"><i class="pi pi-pencil" aria-hidden="true"></i> {{ 'admin.orderDetail.editOrder' | t }}</a>
+                        <a *ngIf="mode === 'edit'" [routerLink]="['/admin/orders', id]" class="commerce-print-invoice">{{ 'common.cancel' | t }}</a>
+                        <button *ngIf="mode === 'edit'" type="button" class="commerce-edit-order" [disabled]="submitting" (click)="save()"><i class="pi pi-check" aria-hidden="true"></i> {{ submitting ? 'Saving…' : 'Save changes' }}</button>
+                        <details *ngIf="mode === 'view'" class="commerce-more-menu">
                           <summary [attr.aria-label]="'admin.orderDetail.moreActions' | t"><i class="pi pi-ellipsis-v" aria-hidden="true"></i></summary>
                           <div>
                             <button type="button" (click)="updateOrderWorkflow('status', 'CANCELLED')"><i class="pi pi-ban" aria-hidden="true"></i> {{ 'admin.orderDetail.cancelOrder' | t }}</button>
@@ -139,8 +141,17 @@ interface CrudField {
                         <section class="commerce-section commerce-context-card commerce-status-card">
                           <span class="commerce-context-icon"><i class="pi pi-truck" aria-hidden="true"></i></span>
                           <div>
-                            <h2>{{ 'admin.orderDetail.fulfilment' | t }}</h2><strong>{{ formatWorkflowLabel(form['delivery_type']) }}</strong>
-                            <small>{{ 'admin.orderDetail.deliveryAddress' | t }}</small><p>{{ form['delivery_address'] || ('admin.orderDetail.storePickup' | t) }}</p>
+                            <h2>{{ 'admin.orderDetail.fulfilment' | t }}</h2><strong *ngIf="mode === 'view'">{{ formatWorkflowLabel(form['delivery_type']) }}</strong>
+                            <p-dropdown *ngIf="mode === 'edit'" [(ngModel)]="form['delivery_type']" [options]="deliveryTypeOptions" optionLabel="label" optionValue="value" appendTo="body" styleClass="commerce-status-dropdown" panelStyleClass="commerce-status-dropdown-panel" />
+                            <small>{{ 'admin.orderDetail.deliveryAddress' | t }}</small>
+                            <p *ngIf="mode === 'view'">{{ form['delivery_address'] || ('admin.orderDetail.storePickup' | t) }}</p>
+                            <textarea *ngIf="mode === 'edit'" class="commerce-order-edit-textarea" [(ngModel)]="form['delivery_address']" [disabled]="form['delivery_type'] !== 'DELIVERY'" aria-label="Delivery address"></textarea>
+                            <a
+                              *ngIf="form['delivery_type'] === 'DELIVERY' && form['delivery_address']"
+                              class="commerce-view-map-link"
+                              routerLink="/admin/delivery-map"
+                              [queryParams]="{ order: form['id'] }"
+                            ><i class="pi pi-map-marker" aria-hidden="true"></i> {{ 'admin.orderDetail.viewOnMap' | t }}</a>
                             <label #orderStatusField>{{ 'admin.orderDetail.orderStatus' | t }}
                               <p-dropdown
                                 [ngModel]="form['status']"
@@ -152,7 +163,7 @@ interface CrudField {
                                 panelStyleClass="commerce-status-dropdown-panel"
                                 [disabled]="workflowUpdating"
                                 (onShow)="positionWorkflowMenuBelow(orderStatusField)"
-                                (onChange)="updateOrderWorkflow('status', $event.value)"
+                                (onChange)="mode === 'edit' ? setOrderField('status', $event.value) : updateOrderWorkflow('status', $event.value)"
                               >
                                 <ng-template pTemplate="selectedItem" let-status><span [class]="'commerce-dropdown-option ' + statusTone(status.value)"><i [class]="status.icon" aria-hidden="true"></i><span>{{ status.label }}</span></span></ng-template>
                                 <ng-template pTemplate="item" let-status><span [class]="'commerce-dropdown-option ' + statusTone(status.value)"><i [class]="status.icon" aria-hidden="true"></i><span>{{ status.label }}</span><i *ngIf="form['status'] === status.value" class="pi pi-check option-check" aria-hidden="true"></i></span></ng-template>
@@ -164,7 +175,8 @@ interface CrudField {
                         <section class="commerce-section commerce-context-card commerce-status-card">
                           <span class="commerce-context-icon"><i class="pi pi-credit-card" aria-hidden="true"></i></span>
                           <div>
-                            <h2>{{ 'admin.orderDetail.payment' | t }}</h2><strong>{{ formatWorkflowLabel(form['payment_method']) }}</strong>
+                            <h2>{{ 'admin.orderDetail.payment' | t }}</h2><strong *ngIf="mode === 'view'">{{ formatWorkflowLabel(form['payment_method']) }}</strong>
+                            <p-dropdown *ngIf="mode === 'edit'" [(ngModel)]="form['payment_method']" [options]="paymentMethodOptions" optionLabel="label" optionValue="value" appendTo="body" styleClass="commerce-status-dropdown" panelStyleClass="commerce-status-dropdown-panel" />
                             <small>{{ 'admin.orderDetail.status' | t }}</small><span [class]="'commerce-status-badge ' + statusTone(form['payment_status'])">{{ formatWorkflowLabel(form['payment_status']) }}</span>
                             <label #paymentStatusField>{{ 'admin.orderDetail.paymentStatus' | t }}
                               <p-dropdown
@@ -177,7 +189,7 @@ interface CrudField {
                                 panelStyleClass="commerce-status-dropdown-panel"
                                 [disabled]="workflowUpdating"
                                 (onShow)="positionWorkflowMenuBelow(paymentStatusField)"
-                                (onChange)="updateOrderWorkflow('payment_status', $event.value)"
+                                (onChange)="mode === 'edit' ? setOrderField('payment_status', $event.value) : updateOrderWorkflow('payment_status', $event.value)"
                               >
                                 <ng-template pTemplate="selectedItem" let-status><span [class]="'commerce-dropdown-option ' + statusTone(status.value)"><i [class]="status.icon" aria-hidden="true"></i><span>{{ status.label }}</span></span></ng-template>
                                 <ng-template pTemplate="item" let-status><span [class]="'commerce-dropdown-option ' + statusTone(status.value)"><i [class]="status.icon" aria-hidden="true"></i><span>{{ status.label }}</span><i *ngIf="form['payment_status'] === status.value" class="pi pi-check option-check" aria-hidden="true"></i></span></ng-template>
@@ -407,7 +419,7 @@ interface CrudField {
                   </div>
                 </div>
 
-                <form *ngIf="mode === 'create' || mode === 'edit'" class="admin-crud-form" #crudForm="ngForm" (ngSubmit)="save(crudForm)">
+                <form *ngIf="mode === 'create' || (mode === 'edit' && entity !== 'orders')" class="admin-crud-form" #crudForm="ngForm" (ngSubmit)="save(crudForm)">
                   <div class="admin-form-grid">
                     <label
                       *ngFor="let field of formFields"
@@ -851,6 +863,14 @@ export class AdminCrudPageComponent implements OnInit, CanLeaveWithUnsavedChange
     { value: 'FAILED', label: 'Failed', icon: 'pi pi-times-circle' },
     { value: 'REFUNDED', label: 'Refunded', icon: 'pi pi-replay' }
   ]
+  readonly deliveryTypeOptions = [
+    { value: 'DELIVERY', label: 'Delivery' },
+    { value: 'PICKUP', label: 'Store pickup' }
+  ]
+  readonly paymentMethodOptions = [
+    { value: 'CASH', label: 'Cash' },
+    { value: 'ONLINE', label: 'Online' }
+  ]
   categories: Category[] = []
   products: Product[] = []
   productPickerOpen = false
@@ -1034,6 +1054,11 @@ export class AdminCrudPageComponent implements OnInit, CanLeaveWithUnsavedChange
     if (['CANCELLED', 'FAILED'].includes(status)) return 'danger'
     if (status === 'REFUNDED') return 'refund'
     return 'neutral'
+  }
+
+  setOrderField(field: 'status' | 'payment_status', value: string): void {
+    this.form[field] = value
+    this.success = ''
   }
 
   positionWorkflowMenuBelow(anchor: HTMLElement): void {

@@ -24,6 +24,7 @@ import { Order } from '../../shared/interfaces/order'
 })
 export class DeliveryOrdersMapComponent implements AfterViewInit, OnChanges, OnDestroy {
   @Input() orders: Order[] = []
+  @Input() focusOrderId: number | null = null
   @ViewChild('mapCanvas', { static: true }) mapCanvas!: ElementRef<HTMLElement>
   loading = false
   error = ''
@@ -74,6 +75,7 @@ export class DeliveryOrdersMapComponent implements AfterViewInit, OnChanges, OnD
         return
       }
       const bounds = L.latLngBounds([])
+      const orderMarkers = new Map<number, { marker: L.Marker; location: { lat: number; lng: number } }>()
       located.forEach(item => {
         const marker = L.marker(item.location, { icon: this.markerIcon(), title: `Open order #${item.order.id}` })
           .bindPopup(`<strong>Order #${item.order.id}</strong><br>${this.escapeHtml(item.location.address)}`)
@@ -81,9 +83,14 @@ export class DeliveryOrdersMapComponent implements AfterViewInit, OnChanges, OnD
         marker.on('click', () => {
           if (item.order.id != null) this.router.navigate(['/admin/orders', item.order.id])
         })
+        if (item.order.id != null) orderMarkers.set(Number(item.order.id), { marker, location: item.location })
         bounds.extend(item.location)
       })
-      if (located.length > 1) this.map.fitBounds(bounds, { padding: [48, 48], maxZoom: 16 })
+      const focused = this.focusOrderId == null ? undefined : orderMarkers.get(this.focusOrderId)
+      if (focused) {
+        this.map.setView(focused.location, 17)
+        focused.marker.openPopup()
+      } else if (located.length > 1) this.map.fitBounds(bounds, { padding: [48, 48], maxZoom: 16 })
       else this.map.setView(located[0].location, 16)
       const unresolved = orders.length - located.length
       if (unresolved) this.error = `${unresolved} delivery ${unresolved === 1 ? 'address was' : 'addresses were'} not precise enough to locate.`

@@ -17959,6 +17959,124 @@ html[dir='rtl'] .p-dropdown-panel .p-dropdown-items {
   width: 100%;
 }
 
+.commerce-view-map-link {
+  align-items: center;
+  background: #eaf6f2;
+  border: 1px solid #b9dfd2;
+  border-radius: 9px;
+  color: #08705a;
+  display: inline-flex;
+  font-size: 0.8rem;
+  font-weight: 850;
+  gap: 7px;
+  justify-content: center;
+  margin-top: 10px;
+  min-height: 38px;
+  padding: 8px 12px;
+  text-decoration: none;
+  width: 100%;
+}
+
+.commerce-view-map-link:hover {
+  background: #dff2eb;
+  border-color: #7fc5ae;
+  color: #075846;
+}
+
+/* Compact order workflow menus */
+.commerce-status-card .commerce-status-dropdown.p-dropdown {
+  border-color: #d7dee5;
+  border-radius: 8px;
+  min-height: 40px;
+}
+
+.commerce-status-card .commerce-status-dropdown.p-dropdown.p-focus {
+  border-color: #0b6b55;
+  box-shadow: 0 0 0 2px rgba(11, 107, 85, 0.1);
+}
+
+.commerce-status-dropdown .p-dropdown-label {
+  font-size: 0.8rem !important;
+  padding: 0.48rem 0.65rem;
+}
+
+.commerce-status-dropdown .p-dropdown-trigger {
+  border-inline-start: 1px solid #edf0f2;
+  width: 2.15rem;
+}
+
+.commerce-status-dropdown .p-dropdown-label .commerce-dropdown-option,
+.commerce-status-dropdown-panel .commerce-dropdown-option {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding: 0 9px;
+}
+
+.commerce-status-dropdown .commerce-dropdown-option > i:first-child,
+.commerce-status-dropdown-panel .commerce-dropdown-option > i:first-child {
+  display: none;
+}
+
+.commerce-status-dropdown-panel.p-dropdown-panel {
+  border-color: #d9e0e5;
+  border-radius: 9px;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.13);
+  padding: 4px;
+}
+
+.commerce-status-dropdown-panel .p-dropdown-items {
+  gap: 0;
+  padding: 0;
+}
+
+.commerce-status-dropdown-panel .p-dropdown-item {
+  border: 0;
+  border-radius: 6px;
+  min-height: 36px;
+}
+
+.commerce-status-dropdown-panel .p-dropdown-item:not(.p-highlight):not(.p-disabled):hover,
+.commerce-status-dropdown-panel .p-dropdown-item.p-focus:not(.p-highlight) {
+  background: #f4f6f7;
+}
+
+.commerce-status-dropdown-panel .p-dropdown-item.p-highlight {
+  background: #edf5f2;
+  border: 0;
+  color: #075f49;
+}
+
+.commerce-status-dropdown-panel .commerce-dropdown-option > span {
+  font-size: 0.8rem !important;
+  font-weight: 750;
+}
+
+.commerce-order-edit-textarea {
+  background: #fff;
+  border: 1px solid #d7dee5;
+  border-radius: 8px;
+  color: #25344a;
+  font-family: inherit;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  min-height: 78px;
+  padding: 9px 10px;
+  resize: vertical;
+  width: 100%;
+}
+
+.commerce-order-edit-textarea:focus {
+  border-color: #0b6b55;
+  box-shadow: 0 0 0 2px rgba(11, 107, 85, 0.1);
+  outline: 0;
+}
+
+.commerce-dropdown-option .option-check {
+  align-self: center;
+  font-size: 0.7rem;
+}
+
 .store-map-marker {
   background: transparent;
   border: 0;

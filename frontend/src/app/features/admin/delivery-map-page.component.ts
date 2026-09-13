@@ -3,6 +3,7 @@ import { Component, OnDestroy, OnInit } from '@angular/core'
 import { Subscription } from 'rxjs'
 import { timeout } from 'rxjs/operators'
 import { AdminDataService } from '../../core/services/admin-data.service'
+import { ActivatedRoute } from '@angular/router'
 import { Order } from '../../shared/interfaces/order'
 import { AdminSidebarComponent } from './admin-sidebar.component'
 import { DeliveryOrdersMapComponent } from './delivery-orders-map.component'
@@ -25,7 +26,7 @@ import { DeliveryOrdersMapComponent } from './delivery-orders-map.component'
           </header>
           <p *ngIf="loading" class="map-dialog-state">Loading delivery orders…</p>
           <p *ngIf="error" class="map-dialog-state error">{{ error }}</p>
-          <app-delivery-orders-map *ngIf="!loading && !error" [orders]="orders" />
+          <app-delivery-orders-map *ngIf="!loading && !error" [orders]="orders" [focusOrderId]="focusOrderId" />
         </section>
       </div>
     </section>
@@ -35,9 +36,12 @@ export class DeliveryMapPageComponent implements OnInit, OnDestroy {
   orders: Order[] = []
   loading = true
   error = ''
+  focusOrderId: number | null = null
   private subscription?: Subscription
-  constructor(private adminData: AdminDataService) {}
+  constructor(private adminData: AdminDataService, private route: ActivatedRoute) {}
   ngOnInit(): void {
+    const requestedOrder = Number(this.route.snapshot.queryParamMap.get('order'))
+    this.focusOrderId = Number.isInteger(requestedOrder) && requestedOrder > 0 ? requestedOrder : null
     this.subscription = this.adminData.loadOrders().pipe(timeout(10000)).subscribe({
       next: orders => { this.orders = orders; this.loading = false },
       error: () => { this.error = 'Could not load delivery orders.'; this.loading = false }
