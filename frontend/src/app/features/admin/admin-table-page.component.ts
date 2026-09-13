@@ -12,13 +12,14 @@ import { AdminConfirmationDialogComponent } from './admin-confirmation-dialog.co
 import { AdminDataTableComponent } from './admin-data-table.component'
 import { AdminSidebarComponent } from './admin-sidebar.component'
 import { AdminStateBlockComponent } from './admin-ui.component'
+import { DeliveryOrdersMapComponent } from './delivery-orders-map.component'
 
 type AdminTableType = 'products' | 'categories' | 'promotions' | 'orders' | 'payments' | 'users'
 
 @Component({
   selector: 'app-admin-table-page',
   standalone: true,
-  imports: [CommonModule, RouterModule, AdminDataTableComponent, AdminSidebarComponent, AdminConfirmationDialogComponent, AdminStateBlockComponent],
+  imports: [CommonModule, RouterModule, AdminDataTableComponent, AdminSidebarComponent, AdminConfirmationDialogComponent, AdminStateBlockComponent, DeliveryOrdersMapComponent],
   template: `
     <section class="admin-shell">
       <app-admin-sidebar />
@@ -78,6 +79,8 @@ type AdminTableType = 'products' | 'categories' | 'promotions' | 'orders' | 'pay
             (refresh)="loadTableData()"
             (rowView)="viewRow($event)"
           />
+
+          <app-delivery-orders-map *ngIf="!loading && tableType === 'orders'" [orders]="orders" />
 
           <app-admin-data-table
             *ngIf="!loading && tableType === 'orders'"

@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core'
 import { BehaviorSubject, Observable, of, tap } from 'rxjs'
-import { catchError, map, mapTo } from 'rxjs/operators'
+import { catchError, mapTo } from 'rxjs/operators'
 import { PublicUser, UserInput, UserUpdate } from '../../shared/interfaces/user'
 import { ApiUrlService } from './api-url.service'
 
@@ -39,7 +39,6 @@ export class AuthService {
 
   updateProfile(userId: number | string, payload: UserUpdate): Observable<PublicUser> {
     return this.api.patch<PublicUser>('/profile', payload).pipe(
-      map(user => ({ ...user, ...payload })),
       tap(user => {
         localStorage.setItem(this.userKey, JSON.stringify(user))
         this.authState.next(true)

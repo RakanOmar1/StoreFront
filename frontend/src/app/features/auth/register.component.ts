@@ -7,11 +7,13 @@ import { Router, RouterModule } from '@angular/router'
 import { switchMap } from 'rxjs/operators'
 import { TranslatePipe } from '../../core/i18n/translate.pipe'
 import { TranslationService } from '../../core/i18n/translation.service'
+import { OpenStreetMapPickerComponent } from '../../shared/openstreet-map-picker.component'
+import { MapPoint, ResolvedMapLocation } from '../../core/services/openstreet-map.service'
 
 @Component({
   selector: 'app-register',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterModule, TranslatePipe],
+  imports: [CommonModule, ReactiveFormsModule, RouterModule, TranslatePipe, OpenStreetMapPickerComponent],
   template: `
   <section class="auth-page">
     <div class="auth-shell">
@@ -68,10 +70,7 @@ import { TranslationService } from '../../core/i18n/translation.service'
             {{ locating ? ('auth.locating' | t) : ('auth.useMyLocation' | t) }}
           </button>
           <small>{{ 'auth.locationHint' | t }}</small>
-          <small class="location-attribution">
-            {{ 'auth.locationDataBy' | t }}
-            <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a>
-          </small>
+          <small class="location-attribution">© OpenStreetMap contributors</small>
           <p *ngIf="locationMessage" class="location-status success">{{ locationMessage }}</p>
           <p *ngIf="locationError" class="location-status error">{{ locationError }}</p>
           <button *ngIf="showRamallahFallback" type="button" class="location-manual-button" (click)="selectRamallah()">
@@ -109,6 +108,13 @@ import { TranslationService } from '../../core/i18n/translation.service'
         </p>
       </form>
     </div>
+    <app-openstreet-map-picker
+      *ngIf="mapOpen"
+      [initialPoint]="mapPoint"
+      [rtl]="i18n.currentLanguage === 'ar'"
+      (selectedLocation)="applyMapLocation($event)"
+      (cancel)="mapOpen = false"
+    />
   </section>
   `
 })
@@ -119,6 +125,8 @@ export class RegisterComponent {
   locationError: string | null = null
   locationMessage: string | null = null
   showRamallahFallback = false
+  mapOpen = false
+  mapPoint: MapPoint = { lat: 31.9038, lng: 35.2034 }
 
   f = this.fb.nonNullable.group({
     firstname: ['', Validators.required],
@@ -145,11 +153,13 @@ export class RegisterComponent {
 
     if (!window.isSecureContext) {
       this.locationError = this.i18n.translate('auth.locationSecureContext')
+      this.mapOpen = true
       return
     }
 
     if (!navigator.geolocation) {
       this.locationError = this.i18n.translate('auth.locationUnsupported')
+      this.mapOpen = true
       return
     }
 
@@ -158,57 +168,18 @@ export class RegisterComponent {
     try {
       const position = await this.getBestPosition()
       const { latitude, longitude, accuracy } = position.coords
+      this.mapPoint = { lat: latitude, lng: longitude }
+      this.mapOpen = true
       if (!Number.isFinite(accuracy) || accuracy > 10000) {
-        this.locationError = this.i18n.translate('auth.locationTooBroad', {
-          accuracy: Math.round(Number(accuracy) / 1000)
-        })
-        this.showRamallahFallback = true
-        return
+        this.locationError = this.i18n.translate('auth.locationTooBroad', { accuracy: Math.round(Number(accuracy) / 1000) })
       }
-      const language = this.i18n.currentLanguage
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(latitude)}&lon=${encodeURIComponent(longitude)}&zoom=18&addressdetails=1&accept-language=${encodeURIComponent(language)}`,
-        { headers: { Accept: 'application/json' } }
-      )
-
-      if (!response.ok) {
-        throw new Error('Reverse geocoding failed')
-      }
-
-      const location = await response.json() as {
-        display_name?: string
-        address?: {
-          city?: string
-          town?: string
-          village?: string
-          municipality?: string
-          county?: string
-          state_district?: string
-          state?: string
-          country?: string
-        }
-      }
-      const city = resolveNominatimCity(location.address)
-        || ''
-      const address = location.display_name?.trim() || city
-
-      if (!city) {
-        throw new Error('Location did not include a city')
-      }
-
-      this.f.patchValue({ city, address: address || city })
-      this.f.controls.city.markAsTouched()
-      this.f.controls.address.markAsTouched()
-      this.locationMessage = this.i18n.translate('auth.locationFoundCityAccuracy', {
-        city,
-        accuracy: Math.max(1, Math.round(accuracy))
-      })
     } catch (error) {
       const geolocationError = error as GeolocationPositionError
       this.locationError = geolocationError?.code === geolocationError?.PERMISSION_DENIED
         ? this.i18n.translate('auth.locationDenied')
         : this.i18n.translate('auth.locationUnavailable')
       this.showRamallahFallback = true
+      this.mapOpen = true
     } finally {
       this.locating = false
     }
@@ -240,6 +211,17 @@ export class RegisterComponent {
         this.submitting = false
       }
     })
+  }
+
+  applyMapLocation(location: ResolvedMapLocation): void {
+    this.f.patchValue({ city: location.city, address: location.address })
+    this.f.controls.city.markAsTouched()
+    this.f.controls.address.markAsTouched()
+    this.mapPoint = { lat: location.lat, lng: location.lng }
+    this.mapOpen = false
+    this.locationError = null
+    this.showRamallahFallback = false
+    this.locationMessage = this.i18n.translate('auth.locationFoundCity', { city: location.city })
   }
 
   selectRamallah(): void {

@@ -92,6 +92,33 @@ describe('Storefront API endpoints', () => {
     expect(bad.status).toBe(401)
   })
 
+  it('persists a customer email change and authenticates only with the new email', async () => {
+    const customer = await request(app)
+      .post('/auth/register')
+      .send({ firstname: 'Email', lastname: 'Customer', email: 'old@example.com', password: 'secret' })
+
+    const update = await request(app)
+      .patch('/profile')
+      .set('Authorization', `Bearer ${customer.body.token}`)
+      .send({ name: 'Email Customer', email: ' New@Example.com ' })
+    const profile = await request(app)
+      .get('/profile')
+      .set('Authorization', `Bearer ${customer.body.token}`)
+    const newEmailLogin = await request(app)
+      .post('/auth/login')
+      .send({ identifier: 'new@example.com', password: 'secret' })
+    const oldEmailLogin = await request(app)
+      .post('/auth/login')
+      .send({ identifier: 'old@example.com', password: 'secret' })
+
+    expect(update.status).toBe(200)
+    expect(update.body.email).toBe('new@example.com')
+    expect(profile.body.email).toBe('new@example.com')
+    expect(newEmailLogin.status).toBe(200)
+    expect(newEmailLogin.body.user.email).toBe('new@example.com')
+    expect(oldEmailLogin.status).toBe(401)
+  })
+
   it('registers and logs users out through auth endpoints', async () => {
     const signup = await request(app)
       .post('/auth/register')

@@ -34,10 +34,13 @@ export class UserModel {
     const parts = name.split(/\s+/).filter(Boolean)
     const firstname = parts[0] || existing.firstname
     const lastname = parts.slice(1).join(' ') || existing.lastname
+    const email = input.email === undefined
+      ? existing.email
+      : String(input.email || '').trim().toLowerCase() || null
     const result = await pool.query(
-      `UPDATE users SET name=$1, firstname=$2, lastname=$3, phone=$4, address=$5, city=$6, updated_at=NOW() WHERE id=$7
+      `UPDATE users SET name=$1, firstname=$2, lastname=$3, email=$4, phone=$5, address=$6, city=$7, updated_at=NOW() WHERE id=$8
        RETURNING id, name, firstname, lastname, email, phone, address, city, avatar_url, role, is_active, created_at, updated_at`,
-      [name || existing.name, firstname, lastname, input.phone ?? existing.phone, input.address ?? existing.address, input.city ?? existing.city, id]
+      [name || existing.name, firstname, lastname, email, input.phone ?? existing.phone, input.address ?? existing.address, input.city ?? existing.city, id]
     )
     return result.rows[0]
   }

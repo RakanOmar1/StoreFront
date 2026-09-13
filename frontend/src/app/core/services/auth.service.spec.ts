@@ -9,6 +9,7 @@ describe('AuthService', () => {
       id: 7,
       firstname: 'Updated',
       lastname: 'Customer',
+      email: 'updated@example.com',
       role: 'CUSTOMER'
     }
     const api = {
@@ -17,10 +18,10 @@ describe('AuthService', () => {
     const service = new AuthService(api as any)
     let result: unknown
 
-    service.updateProfile(7, { firstname: 'Updated' }).subscribe(user => { result = user })
+    service.updateProfile(7, { firstname: 'Updated', email: 'requested@example.com' }).subscribe(user => { result = user })
 
-    expect(api.patch).toHaveBeenCalledWith('/profile', { firstname: 'Updated' })
-    expect(result).toEqual(jasmine.objectContaining(updated))
-    expect(JSON.parse(localStorage.getItem('user') || '{}')).toEqual(jasmine.objectContaining(updated))
+    expect(api.patch).toHaveBeenCalledWith('/profile', { firstname: 'Updated', email: 'requested@example.com' })
+    expect(result).toEqual(updated)
+    expect(JSON.parse(localStorage.getItem('user') || '{}')).toEqual(updated)
   })
 })
