@@ -92,6 +92,19 @@ describe('Storefront API endpoints', () => {
     expect(bad.status).toBe(401)
   })
 
+  it('allows local Angular development origins through CORS', async () => {
+    for (const origin of ['http://localhost:4200', 'http://127.0.0.1:4200']) {
+      const response = await request(app)
+        .options('/products')
+        .set('Origin', origin)
+        .set('Access-Control-Request-Method', 'GET')
+
+      expect(response.status).toBe(204)
+      expect(response.headers['access-control-allow-origin']).toBe(origin)
+      expect(response.headers['vary']).toContain('Origin')
+    }
+  })
+
   it('persists a customer email change and authenticates only with the new email', async () => {
     const customer = await request(app)
       .post('/auth/register')
@@ -216,6 +229,10 @@ describe('Storefront API endpoints', () => {
       .post(`/orders/${orderId}/products`)
       .set('Authorization', `Bearer ${token}`)
       .send({ product_id: productId, quantity: 5 })
+    const updateProduct = await request(app)
+      .patch(`/orders/${orderId}/products/${addProduct.body.id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ quantity: 3 })
     const list = await request(app).get('/orders').set('Authorization', `Bearer ${token}`)
     const show = await request(app).get(`/orders/${orderId}`).set('Authorization', `Bearer ${token}`)
     const current = await request(app).get(`/orders/users/${userId}/current`).set('Authorization', `Bearer ${token}`)
@@ -227,6 +244,8 @@ describe('Storefront API endpoints', () => {
     const remove = await request(app).delete(`/orders/${orderId}`).set('Authorization', `Bearer ${token}`)
 
     expect(addProduct.status).toBe(201)
+    expect(updateProduct.status).toBe(200)
+    expect(updateProduct.body.quantity).toBe(3)
     expect(list.body.length).toBe(1)
     expect(show.body.status).toBe('active')
     expect(current.body.length).toBe(1)

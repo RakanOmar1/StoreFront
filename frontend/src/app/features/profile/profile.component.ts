@@ -9,11 +9,14 @@ import { AdminConfirmationDialogComponent } from '../admin/admin-confirmation-di
 import { AdminSidebarComponent } from '../admin/admin-sidebar.component'
 import { TranslatePipe } from '../../core/i18n/translate.pipe'
 import { CanLeaveWithUnsavedChanges } from '../../core/guards/unsaved-changes.guard'
+import { TranslationService } from '../../core/i18n/translation.service'
+import { OpenStreetMapPickerComponent } from '../../shared/openstreet-map-picker.component'
+import { MapPoint, OpenStreetMapService, ResolvedMapLocation } from '../../core/services/openstreet-map.service'
 
 @Component({
   selector: 'app-profile',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterModule, AdminSidebarComponent, AdminChatterComponent, AdminConfirmationDialogComponent, TranslatePipe],
+  imports: [CommonModule, ReactiveFormsModule, RouterModule, AdminSidebarComponent, AdminChatterComponent, AdminConfirmationDialogComponent, TranslatePipe, OpenStreetMapPickerComponent],
   template: `
   <ng-container *ngIf="isAdmin; else regularProfile">
     <section class="admin-shell">
@@ -80,19 +83,19 @@ import { CanLeaveWithUnsavedChanges } from '../../core/guards/unsaved-changes.gu
             <span>{{ 'profile.lastName' | t }}</span>
             <strong>{{ f.controls.lastname.value || '-' }}</strong>
           </div>
-          <div>
+          <div class="profile-field-wide">
             <span>{{ 'profile.email' | t }}</span>
             <strong>{{ f.controls.email.value || '-' }}</strong>
           </div>
-          <div>
+          <div class="profile-field-wide">
             <span>{{ 'profile.phone' | t }}</span>
             <strong>{{ f.controls.phone.value || '-' }}</strong>
           </div>
-          <div>
+          <div class="profile-field-wide">
             <span>{{ 'profile.address' | t }}</span>
             <strong>{{ f.controls.address.value || '-' }}</strong>
           </div>
-          <div>
+          <div class="profile-field-wide">
             <span>{{ 'profile.city' | t }}</span>
             <strong>{{ f.controls.city.value || '-' }}</strong>
           </div>
@@ -140,6 +143,14 @@ import { CanLeaveWithUnsavedChanges } from '../../core/guards/unsaved-changes.gu
             <input formControlName="city" placeholder="Jerusalem" />
           </label>
 
+          <div class="checkout-location profile-location-picker span-2">
+            <button type="button" class="checkout-location-button" (click)="openLocationPicker()" [disabled]="locatingAddress">
+              <i class="pi pi-map-marker" aria-hidden="true"></i>
+              {{ locatingAddress ? ('profile.loadingLocation' | t) : ('profile.chooseLocation' | t) }}
+            </button>
+            <p>{{ 'profile.locationHelp' | t }}</p>
+          </div>
+
           <label>
             {{ 'common.role' | t }}
             <input [value]="user?.role || 'CUSTOMER'" disabled />
@@ -170,6 +181,14 @@ import { CanLeaveWithUnsavedChanges } from '../../core/guards/unsaved-changes.gu
         </div>
       </div>
     </form>
+
+    <app-openstreet-map-picker
+      *ngIf="locationPickerOpen"
+      [initialPoint]="locationPickerPoint"
+      [rtl]="i18n.currentLanguage === 'ar'"
+      (selectedLocation)="applyMapLocation($event)"
+      (cancel)="locationPickerOpen = false"
+    />
 
     <div *ngIf="passwordWizardOpen" class="modal-backdrop" (click)="closePasswordWizard()">
       <form class="password-wizard" [formGroup]="passwordForm" (ngSubmit)="submitPassword()" (click)="$event.stopPropagation()">
@@ -235,6 +254,9 @@ export class ProfileComponent implements CanLeaveWithUnsavedChanges {
   passwordSuccess = false
   passwordError: string | null = null
   discardDialogOpen = false
+  locationPickerOpen = false
+  locatingAddress = false
+  locationPickerPoint: MapPoint = { lat: 31.9038, lng: 35.2034 }
   private discardResolver?: (discard: boolean) => void
   user = this.auth.getCurrentUser()
 
@@ -253,7 +275,13 @@ export class ProfileComponent implements CanLeaveWithUnsavedChanges {
     confirmPassword: ['', Validators.required]
   })
 
-  constructor(private fb: FormBuilder, private auth: AuthService, private router: Router) {}
+  constructor(
+    private fb: FormBuilder,
+    private auth: AuthService,
+    private router: Router,
+    public i18n: TranslationService,
+    private locations: OpenStreetMapService
+  ) {}
 
   get isAdmin(): boolean {
     return this.user?.role === 'ADMIN' || this.user?.role === 'MANAGER'
@@ -278,6 +306,7 @@ export class ProfileComponent implements CanLeaveWithUnsavedChanges {
   }
 
   cancelEdit() {
+    this.locationPickerOpen = false
     this.user = this.auth.getCurrentUser()
     this.f.patchValue({
       firstname: this.user?.firstname || '',
@@ -291,6 +320,36 @@ export class ProfileComponent implements CanLeaveWithUnsavedChanges {
     this.isEditing = false
     this.success = false
     this.error = null
+  }
+
+  async openLocationPicker(): Promise<void> {
+    if (this.locationPickerOpen || this.locatingAddress) return
+
+    const { address, city } = this.f.getRawValue()
+    const savedLocation = [address.trim(), city.trim()].filter(Boolean).join(', ')
+
+    if (savedLocation) {
+      this.locatingAddress = true
+      try {
+        const location = await this.locations.geocodeAddress(savedLocation, this.i18n.currentLanguage)
+        this.locationPickerPoint = { lat: location.lat, lng: location.lng }
+      } catch {
+        // Use the Ramallah fallback when the saved address cannot be resolved.
+      } finally {
+        this.locatingAddress = false
+      }
+    }
+
+    this.locationPickerOpen = true
+  }
+
+  applyMapLocation(location: ResolvedMapLocation): void {
+    this.f.patchValue({ address: location.address, city: location.city })
+    this.f.controls.address.markAsTouched()
+    this.f.controls.city.markAsTouched()
+    this.f.markAsDirty()
+    this.locationPickerPoint = { lat: location.lat, lng: location.lng }
+    this.locationPickerOpen = false
   }
 
   submit() {

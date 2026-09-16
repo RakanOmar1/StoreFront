@@ -58,6 +58,23 @@ describe('OrderModel', () => {
     expect(completed.length).toBe(1)
   })
 
+  it('updates and removes order lines while recalculating the order total', async () => {
+    const user = await userModel.create({ firstname: 'Editable', lastname: 'Order', password: 'pass' })
+    const product = await productModel.create({ name: 'Apples', price: 4, category: 'produce' })
+    const order = await model.create({ user_id: user.id as number, status: 'PENDING' })
+    const item = await model.addProduct(String(order.id), String(product.id), 2)
+
+    await model.updateProduct(String(order.id), String(item.id), 5)
+    let saved = await model.show(String(order.id))
+    expect(saved.items?.[0].quantity).toBe(5)
+    expect(Number(saved.total_amount)).toBe(20)
+
+    await model.removeProduct(String(order.id), String(item.id))
+    saved = await model.show(String(order.id))
+    expect(saved.items).toEqual([])
+    expect(Number(saved.total_amount)).toBe(0)
+  })
+
   it('uses the catalog price for legacy zero-priced items without replacing saved prices', async () => {
     const user = await userModel.create({ firstname: 'Legacy', lastname: 'Order', password: 'pass' })
     const product = await productModel.create({ name: 'Yogurt', price: 12, category: 'dairy' })

@@ -3,7 +3,7 @@ import { Component, HostListener, OnInit } from '@angular/core'
 import { FormsModule } from '@angular/forms'
 import { ActivatedRoute, Router, RouterModule } from '@angular/router'
 import { Observable } from 'rxjs'
-import { finalize, timeout } from 'rxjs/operators'
+import { finalize, switchMap, timeout } from 'rxjs/operators'
 import { DropdownModule } from 'primeng/dropdown'
 import { CanLeaveWithUnsavedChanges } from '../../core/guards/unsaved-changes.guard'
 import { AdminDataService } from '../../core/services/admin-data.service'
@@ -51,7 +51,7 @@ interface CrudField {
                   <button type="button" class="record-navigation-button" [disabled]="!nextRecordId" (click)="openAdjacentRecord(nextRecordId)" aria-label="Next record">
                     <i class="pi pi-chevron-right" aria-hidden="true"></i>
                   </button>
-                  <a [routerLink]="listLink" class="secondary-button">Back to list</a>
+                  <a [routerLink]="listLink" class="secondary-button"><i class="pi pi-arrow-left" aria-hidden="true"></i> Back to list</a>
                 </div>
               </app-admin-page-header>
 
@@ -100,17 +100,42 @@ interface CrudField {
                       <main class="commerce-order-main">
                         <section class="commerce-section commerce-items-card">
                           <header><div><h2>{{ 'admin.orderDetail.orderItems' | t }}</h2><p>{{ 'admin.orderDetail.itemCount' | t:{ count: orderItemCount } }}</p></div></header>
+                          <div *ngIf="mode === 'edit'" class="order-line-add">
+                            <p-dropdown
+                              [(ngModel)]="selectedOrderProductId"
+                              [ngModelOptions]="{ standalone: true }"
+                              [options]="orderProductOptions"
+                              optionLabel="label"
+                              optionValue="value"
+                              [filter]="true"
+                              filterBy="label"
+                              placeholder="Select a product"
+                              appendTo="body"
+                              styleClass="order-product-dropdown"
+                              panelStyleClass="order-product-dropdown-panel"
+                            />
+                            <label><span>Quantity</span><input type="number" min="1" step="1" [(ngModel)]="newOrderProductQuantity" [ngModelOptions]="{ standalone: true }" /></label>
+                            <button type="button" class="order-line-add-button" [disabled]="!selectedOrderProductId || orderItemsUpdating" (click)="addOrderProduct()"><i class="pi pi-plus" aria-hidden="true"></i> Add product</button>
+                          </div>
                           <div class="commerce-items-table" role="table" [attr.aria-label]="'admin.orderDetail.orderItems' | t">
-                            <div class="commerce-items-head" role="row"><span role="columnheader">{{ 'admin.orderDetail.product' | t }}</span><span role="columnheader">{{ 'admin.orderDetail.qty' | t }}</span><span role="columnheader">{{ 'admin.orderDetail.unitPrice' | t }}</span><span role="columnheader">{{ 'admin.orderDetail.total' | t }}</span></div>
+                            <div class="commerce-items-head" [class.editing]="mode === 'edit'" role="row"><span role="columnheader">{{ 'admin.orderDetail.product' | t }}</span><span role="columnheader">{{ 'admin.orderDetail.qty' | t }}</span><span role="columnheader">{{ 'admin.orderDetail.unitPrice' | t }}</span><span role="columnheader">{{ 'admin.orderDetail.total' | t }}</span><span *ngIf="mode === 'edit'" role="columnheader">Actions</span></div>
                             <div *ngIf="orderItems.length; else noCommerceItems" class="commerce-items-list" role="rowgroup">
-                              <article *ngFor="let item of orderItems" role="row">
+                              <article *ngFor="let item of orderItems" [class.editing]="mode === 'edit'" role="row">
                                 <div class="commerce-product-cell" role="cell">
                                   <span class="commerce-product-icon"><i class="pi pi-box" aria-hidden="true"></i></span>
                                   <div class="commerce-product-copy"><strong>{{ item.product_name || ('Product #' + item.product_id) }}</strong><small>{{ item.category || 'Uncategorized' }}</small></div>
                                 </div>
-                                <div class="commerce-item-cell" role="cell" [attr.data-label]="'admin.orderDetail.qty' | t">{{ item.quantity }}</div>
+                                <div class="commerce-item-cell" role="cell" [attr.data-label]="'admin.orderDetail.qty' | t">
+                                  <span *ngIf="mode !== 'edit'">{{ item.quantity }}</span>
+                                  <div *ngIf="mode === 'edit'" class="order-quantity-stepper">
+                                    <button type="button" [disabled]="orderItemsUpdating || item.quantity <= 1" (click)="changeOrderItemQuantity(item, item.quantity - 1)" aria-label="Decrease quantity"><i class="pi pi-minus" aria-hidden="true"></i></button>
+                                    <strong>{{ item.quantity }}</strong>
+                                    <button type="button" [disabled]="orderItemsUpdating" (click)="changeOrderItemQuantity(item, item.quantity + 1)" aria-label="Increase quantity"><i class="pi pi-plus" aria-hidden="true"></i></button>
+                                  </div>
+                                </div>
                                 <div class="commerce-item-cell" role="cell" [attr.data-label]="'admin.orderDetail.unitPrice' | t">{{ item.price || 0 | currency:'ILS' }}</div>
                                 <strong class="commerce-item-cell commerce-line-total" role="cell" [attr.data-label]="'admin.orderDetail.total' | t">{{ orderItemTotal(item) | currency:'ILS' }}</strong>
+                                <div *ngIf="mode === 'edit'" class="commerce-item-cell order-line-actions" role="cell"><button type="button" [disabled]="orderItemsUpdating" (click)="removeOrderProduct(item)" aria-label="Remove product"><i class="pi pi-trash" aria-hidden="true"></i></button></div>
                               </article>
                             </div>
                             <ng-template #noCommerceItems><div class="admin-order-items-empty"><i class="pi pi-inbox" aria-hidden="true"></i> {{ 'admin.orderDetail.noProducts' | t }}</div></ng-template>
@@ -261,8 +286,12 @@ interface CrudField {
                   </section>
 
                   <div *ngIf="entity !== 'orders'" class="admin-form-grid readonly-form-grid">
+                    <ng-container *ngFor="let field of previewFields; let fieldIndex = index">
+                    <div *ngIf="sectionTitle(field, fieldIndex) as section" class="admin-form-section-heading">
+                      <i [class]="sectionIcon(field, fieldIndex)" aria-hidden="true"></i>
+                      <div><strong>{{ section }}</strong><span>{{ sectionDescription(field, fieldIndex) }}</span></div>
+                    </div>
                     <label
-                      *ngFor="let field of previewFields"
                       [class.span-2]="field.type === 'textarea' || field.type === 'imageList'"
                       [class.timestamp-field]="isTimestampField(field.key)"
                       class="admin-form-field"
@@ -309,6 +338,7 @@ interface CrudField {
                         />
                       </ng-container>
                     </label>
+                    </ng-container>
                   </div>
 
                   <section *ngIf="false" class="odoo-order-statusbar">
@@ -413,16 +443,20 @@ interface CrudField {
                     </ng-template>
                   </section>
                   <div *ngIf="entity !== 'orders'" class="admin-crud-actions">
-                    <a [routerLink]="listLink" class="secondary-button">Back</a>
-                    <a [routerLink]="editLink" class="admin-create-link">Edit</a>
-                    <button type="button" class="danger-button" (click)="openDeleteDialog()">Delete</button>
+                    <a [routerLink]="listLink" class="secondary-button"><i class="pi pi-arrow-left" aria-hidden="true"></i> Back</a>
+                    <a [routerLink]="editLink" class="admin-create-link"><i class="pi pi-pencil" aria-hidden="true"></i> Edit</a>
+                    <button type="button" class="danger-button" (click)="openDeleteDialog()"><i class="pi pi-trash" aria-hidden="true"></i> Delete</button>
                   </div>
                 </div>
 
                 <form *ngIf="mode === 'create' || (mode === 'edit' && entity !== 'orders')" class="admin-crud-form" #crudForm="ngForm" (ngSubmit)="save(crudForm)">
                   <div class="admin-form-grid">
+                    <ng-container *ngFor="let field of formFields; let fieldIndex = index">
+                    <div *ngIf="sectionTitle(field, fieldIndex) as section" class="admin-form-section-heading">
+                      <i [class]="sectionIcon(field, fieldIndex)" aria-hidden="true"></i>
+                      <div><strong>{{ section }}</strong><span>{{ sectionDescription(field, fieldIndex) }}</span></div>
+                    </div>
                     <label
-                      *ngFor="let field of formFields"
                       [class.span-2]="field.type === 'textarea' || field.type === 'imageList'"
                       [class.timestamp-field]="isTimestampField(field.key)"
                       class="admin-form-field"
@@ -511,11 +545,13 @@ interface CrudField {
                       <span *ngIf="field.help" class="field-help">{{ field.help }}</span>
                       <small *ngIf="crudForm.submitted && field.required && isEmpty(form[field.key])">{{ validationMessage(field) }}</small>
                     </label>
+                    </ng-container>
                   </div>
 
                   <div class="admin-crud-actions">
-                    <a [routerLink]="listLink" class="secondary-button">Cancel</a>
+                    <a [routerLink]="listLink" class="secondary-button"><i class="pi pi-times" aria-hidden="true"></i> Cancel</a>
                     <button type="submit" class="admin-save-button" [disabled]="submitting">
+                      <i [class]="submitting ? 'pi pi-spin pi-spinner' : mode === 'create' ? 'pi pi-plus' : 'pi pi-check'" aria-hidden="true"></i>
                       {{ submitting ? 'Saving...' : mode === 'create' ? 'Create' : 'Save changes' }}
                     </button>
                   </div>
@@ -569,7 +605,7 @@ interface CrudField {
                   <button type="button" class="icon-close-button" [attr.aria-label]="productPickerFullscreen ? 'Exit full page' : 'Open full page'" (click)="toggleProductPickerFullscreen()">
                     {{ productPickerFullscreen ? 'Minimize' : 'Expand' }}
                   </button>
-                  <button type="button" class="icon-close-button" aria-label="Close" (click)="closeProductPicker()">x</button>
+                  <button type="button" class="icon-close-button picker-close-button" aria-label="Close" (click)="closeProductPicker()">×</button>
                 </div>
               </header>
 
@@ -663,9 +699,6 @@ interface CrudField {
                 </label>
                 <button type="button" class="secondary-button clear-filter-button" (click)="clearProductPickerFilters()">
                   Reset filters
-                </button>
-                <button type="button" class="secondary-button clear-filter-button">
-                  Advanced filters
                 </button>
               </div>
 
@@ -811,8 +844,6 @@ interface CrudField {
                     <span *ngIf="draftProductSummaries.length === 0">No individual products selected.</span>
                   </details>
                   <nav>
-                    <button type="button" (click)="setProductPickerTab('products')">View products</button>
-                    <button type="button" (click)="setProductPickerTab('categories')">View categories</button>
                     <button type="button" (click)="clearDraftSelection()">Clear all</button>
                   </nav>
                 </aside>
@@ -841,6 +872,9 @@ export class AdminCrudPageComponent implements OnInit, CanLeaveWithUnsavedChange
   submitting = false
   deleting = false
   workflowUpdating = false
+  orderItemsUpdating = false
+  selectedOrderProductId: number | null = null
+  newOrderProductQuantity = 1
   deleteDialogOpen = false
   deleteError = ''
   discardDialogOpen = false
@@ -994,6 +1028,52 @@ export class AdminCrudPageComponent implements OnInit, CanLeaveWithUnsavedChange
 
   orderItemTotal(item: any): number {
     return (Number(item?.price) || 0) * (Number(item?.quantity) || 0)
+  }
+
+  get orderProductOptions(): Array<{ value: number; label: string }> {
+    return this.products
+      .filter(product => product.id != null)
+      .map(product => ({ value: Number(product.id), label: `${product.name} · ${this.moneyLabel(product.price)}` }))
+  }
+
+  addOrderProduct(): void {
+    const productId = Number(this.selectedOrderProductId)
+    const quantity = Number(this.newOrderProductQuantity)
+    if (!Number.isInteger(productId) || productId <= 0 || !Number.isInteger(quantity) || quantity <= 0 || this.orderItemsUpdating) return
+    this.mutateOrderItems(this.adminData.addOrderProduct(this.id, productId, quantity), 'Product added to the order.')
+  }
+
+  changeOrderItemQuantity(item: any, quantity: number): void {
+    if (!item?.id || !Number.isInteger(quantity) || quantity <= 0 || this.orderItemsUpdating) return
+    this.mutateOrderItems(this.adminData.updateOrderProduct(this.id, item.id, quantity), 'Product quantity updated.')
+  }
+
+  removeOrderProduct(item: any): void {
+    if (!item?.id || this.orderItemsUpdating) return
+    this.mutateOrderItems(this.adminData.removeOrderProduct(this.id, item.id), 'Product removed from the order.')
+  }
+
+  private mutateOrderItems(request: Observable<unknown>, message: string): void {
+    this.orderItemsUpdating = true
+    this.error = ''
+    this.success = ''
+    request.pipe(
+      switchMap(() => this.adminData.getOrder(this.id)),
+      finalize(() => { this.orderItemsUpdating = false })
+    ).subscribe({
+      next: order => {
+        this.form = this.normalizeLoadedRecord({ ...this.form, ...order })
+        this.selectedOrderProductId = null
+        this.newOrderProductQuantity = 1
+        this.captureInitialState()
+        this.success = message
+      },
+      error: () => { this.error = 'Could not update the products in this order.' }
+    })
+  }
+
+  private moneyLabel(value: unknown): string {
+    return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'ILS' }).format(Number(value) || 0)
   }
 
   isWorkflowCompleted(status: string): boolean {
@@ -1265,6 +1345,45 @@ export class AdminCrudPageComponent implements OnInit, CanLeaveWithUnsavedChange
 
   isTimestampField(key: string): boolean {
     return key === 'created_at' || key === 'updated_at'
+  }
+
+  sectionTitle(field: CrudField, index: number): string {
+    if (index === 0) return this.entity === 'users' ? 'Personal details' : `${this.entityLabel} details`
+    if (field.key === 'role') return 'Access and role'
+    if (field.key === 'password') return 'Security'
+    if (field.key === 'images') return 'Media'
+    if (field.key === 'productIds') return 'Applicability'
+    if (field.key === 'delivery_type') return 'Fulfilment'
+    if (field.key === 'created_at') return 'Timestamps'
+    return ''
+  }
+
+  sectionDescription(field: CrudField, index: number): string {
+    const title = this.sectionTitle(field, index)
+    const descriptions: Record<string, string> = {
+      'Personal details': 'Basic information about this user.',
+      'Access and role': "Control the user's access and permissions.",
+      Security: 'Set or update account credentials.',
+      Media: 'Images shown throughout the storefront.',
+      Applicability: 'Choose where this promotion should apply.',
+      Fulfilment: 'Delivery method and destination details.',
+      Timestamps: 'System timestamps for reference.'
+    }
+    return descriptions[title] || `Manage the core information for this ${this.entityLabel.toLowerCase()}.`
+  }
+
+  sectionIcon(field: CrudField, index: number): string {
+    const title = this.sectionTitle(field, index)
+    const icons: Record<string, string> = {
+      'Personal details': 'pi pi-user',
+      'Access and role': 'pi pi-lock',
+      Security: 'pi pi-shield',
+      Media: 'pi pi-images',
+      Applicability: 'pi pi-tags',
+      Fulfilment: 'pi pi-truck',
+      Timestamps: 'pi pi-clock'
+    }
+    return icons[title] || 'pi pi-file-edit'
   }
 
   private formatTimestamp(value: unknown): string {
@@ -1889,6 +2008,13 @@ export class AdminCrudPageComponent implements OnInit, CanLeaveWithUnsavedChange
         error: () => {
           this.products = []
         }
+      })
+    }
+
+    if (this.entity === 'orders') {
+      this.adminData.loadProducts().subscribe({
+        next: products => { this.products = products },
+        error: () => { this.products = [] }
       })
     }
   }

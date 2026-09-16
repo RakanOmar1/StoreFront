@@ -19,4 +19,15 @@
 - Live compilation: passed (`ng serve`).
 - Visual screenshot comparison: blocked because no browser capture tool is available in this session.
 
+## Option 1 admin record layout
+
+- Source visual truth: `C:\Users\USER\.codex\generated_images\01a03056-e415-7111-872e-1b4c8392addf\exec-b4dd1f00-d6dc-478c-a9a1-e564ae01253c.png` (1664 x 954), targeting a 1497 x 860 desktop admin user edit screen.
+- Implementation route: `/admin/users/:id/edit`.
+- Implemented structure: compact record header, calm sectioned two-column form, full-width complex fields, persistent action row, quieter activity panel, and shared view/edit height.
+- Build and component tests pass.
+- Browser-rendered implementation evidence, density normalization, interaction checks, and console checks are unavailable because no interactive browser capture surface is exposed in this session.
+- Required follow-up: capture the authenticated route at 1497 x 860 and compare header, grid, actions, activity panel, RTL direction, typography, spacing, colors, icons, and copy against the selected mockup.
+- Image quality: no raster imagery is used by this administrative form.
+- Comparison history: initial implementation completed; no visual comparison iteration was possible.
+
 final result: blocked

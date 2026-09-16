@@ -93,6 +93,27 @@ export class OrderController {
     }
   }
 
+  async updateProduct(req: Request, res: Response): Promise<void> {
+    try {
+      const quantity = Number(req.body.quantity)
+      if (!Number.isInteger(quantity) || quantity <= 0) {
+        res.status(400).json('A positive quantity is required')
+        return
+      }
+      res.json(await model.updateProduct(req.params.id, req.params.itemId, quantity))
+    } catch {
+      res.status(404).json('Order item not found')
+    }
+  }
+
+  async removeProduct(req: Request, res: Response): Promise<void> {
+    try {
+      res.json(await model.removeProduct(req.params.id, req.params.itemId))
+    } catch {
+      res.status(404).json('Order item not found')
+    }
+  }
+
   async currentOrderByUser(req: Request, res: Response): Promise<void> {
     try {
       res.json(await model.currentOrderByUser(req.params.userId))

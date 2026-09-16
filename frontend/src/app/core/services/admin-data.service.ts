@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core'
 import { forkJoin, Observable, of } from 'rxjs'
 import { catchError, map, timeout } from 'rxjs/operators'
-import { Order } from '../../shared/interfaces/order'
+import { Order, OrderItem } from '../../shared/interfaces/order'
 import { Category, Product, Promotion } from '../../shared/interfaces/product'
 import { PublicUser } from '../../shared/interfaces/user'
 import { ApiUrlService } from './api-url.service'
@@ -149,6 +149,18 @@ export class AdminDataService {
 
   updateOrder(id: number | string, payload: Partial<Order>): Observable<Order> {
     return this.api.put<Order>(`/orders/${id}`, payload)
+  }
+
+  addOrderProduct(orderId: number | string, productId: number | string, quantity: number): Observable<OrderItem> {
+    return this.api.post<OrderItem>(`/orders/${orderId}/products`, { product_id: productId, quantity })
+  }
+
+  updateOrderProduct(orderId: number | string, itemId: number | string, quantity: number): Observable<OrderItem> {
+    return this.api.patch<OrderItem>(`/orders/${orderId}/products/${itemId}`, { quantity })
+  }
+
+  removeOrderProduct(orderId: number | string, itemId: number | string): Observable<OrderItem> {
+    return this.api.delete<OrderItem>(`/orders/${orderId}/products/${itemId}`)
   }
 
   deleteOrder(id: number | string): Observable<Order> {

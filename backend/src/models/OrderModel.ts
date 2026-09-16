@@ -1,5 +1,6 @@
 import pool from '../config/database'
 import { CheckoutPayload, Order, OrderProduct } from '../types/Order'
+import { PoolClient } from 'pg'
 
 export class OrderModel {
   async index(): Promise<Order[]> {
@@ -74,11 +75,57 @@ export class OrderModel {
   }
 
   async addProduct(orderId: string, productId: string, quantity: number): Promise<OrderProduct> {
-    const result = await pool.query(
-      'INSERT INTO order_products (order_id, product_id, quantity, price) VALUES ($1, $2, $3, COALESCE((SELECT price FROM products WHERE id = $2::BIGINT), 0)) RETURNING *',
-      [orderId, productId, quantity]
-    )
-    return result.rows[0]
+    const client = await pool.connect()
+    try {
+      await client.query('BEGIN')
+      const existing = await client.query('SELECT id, quantity FROM order_products WHERE order_id = $1 AND product_id = $2 ORDER BY id LIMIT 1 FOR UPDATE', [orderId, productId])
+      const result = existing.rows[0]
+        ? await client.query('UPDATE order_products SET quantity = quantity + $1 WHERE id = $2 RETURNING *', [quantity, existing.rows[0].id])
+        : await client.query('INSERT INTO order_products (order_id, product_id, quantity, price) SELECT $1, p.id, $3, p.price FROM products p WHERE p.id = $2 RETURNING *', [orderId, productId, quantity])
+      if (!result.rows[0]) throw new Error('Order or product not found')
+      await this.recalculateTotal(client, orderId)
+      await client.query('COMMIT')
+      return result.rows[0]
+    } catch (error) {
+      await client.query('ROLLBACK')
+      throw error
+    } finally {
+      client.release()
+    }
+  }
+
+  async updateProduct(orderId: string, itemId: string, quantity: number): Promise<OrderProduct> {
+    const client = await pool.connect()
+    try {
+      await client.query('BEGIN')
+      const result = await client.query('UPDATE order_products SET quantity = $1 WHERE id = $2 AND order_id = $3 RETURNING *', [quantity, itemId, orderId])
+      if (!result.rows[0]) throw new Error('Order item not found')
+      await this.recalculateTotal(client, orderId)
+      await client.query('COMMIT')
+      return result.rows[0]
+    } catch (error) {
+      await client.query('ROLLBACK')
+      throw error
+    } finally {
+      client.release()
+    }
+  }
+
+  async removeProduct(orderId: string, itemId: string): Promise<OrderProduct> {
+    const client = await pool.connect()
+    try {
+      await client.query('BEGIN')
+      const result = await client.query('DELETE FROM order_products WHERE id = $1 AND order_id = $2 RETURNING *', [itemId, orderId])
+      if (!result.rows[0]) throw new Error('Order item not found')
+      await this.recalculateTotal(client, orderId)
+      await client.query('COMMIT')
+      return result.rows[0]
+    } catch (error) {
+      await client.query('ROLLBACK')
+      throw error
+    } finally {
+      client.release()
+    }
   }
 
   async currentOrderByUser(userId: string): Promise<Order[]> {
@@ -209,5 +256,14 @@ export class OrderModel {
     const bundles = Math.floor(quantity / bundleQuantity)
     const remainder = quantity % bundleQuantity
     return Math.max(0, (bundles * bundlePrice) + (remainder * price))
+  }
+
+  private async recalculateTotal(client: PoolClient, orderId: string): Promise<void> {
+    await client.query(
+      `UPDATE orders
+       SET total_amount = COALESCE((SELECT SUM(quantity * price) FROM order_products WHERE order_id = $1), 0), updated_at = NOW()
+       WHERE id = $1`,
+      [orderId]
+    )
   }
 }

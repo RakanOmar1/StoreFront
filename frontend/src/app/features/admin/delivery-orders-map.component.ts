@@ -16,6 +16,9 @@ import { Order } from '../../shared/interfaces/order'
         <strong>{{ deliveryOrders.length }} delivery orders</strong>
       </header>
       <div #mapCanvas class="delivery-orders-map-canvas"></div>
+      <div *ngIf="loading" class="delivery-map-overlay"><i class="pi pi-spin pi-spinner" aria-hidden="true"></i><span>Locating delivery addresses...</span></div>
+      <div *ngIf="error" class="delivery-map-overlay error"><i class="pi pi-exclamation-triangle" aria-hidden="true"></i><span>{{ error }}</span></div>
+      <div *ngIf="!loading && !error && !deliveryOrders.length" class="delivery-map-overlay empty"><i class="pi pi-map-marker" aria-hidden="true"></i><strong>No mapped deliveries yet</strong><span>Delivery orders with a saved address will appear here.</span></div>
       <p *ngIf="loading" class="map-dialog-state">Locating delivery addresses…</p>
       <p *ngIf="error" class="map-dialog-state error">{{ error }}</p>
       <p *ngIf="!loading && !error && !deliveryOrders.length" class="map-dialog-state">There are no delivery orders with addresses.</p>
@@ -55,7 +58,6 @@ export class DeliveryOrdersMapComponent implements AfterViewInit, OnChanges, OnD
     const version = ++this.renderVersion
     const orders = this.deliveryOrders
     this.error = ''
-    if (!orders.length) return
     this.loading = true
 
     try {
@@ -64,6 +66,7 @@ export class DeliveryOrdersMapComponent implements AfterViewInit, OnChanges, OnD
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' }).addTo(this.map)
       this.markers = L.layerGroup().addTo(this.map)
       window.setTimeout(() => this.map?.invalidateSize(), 0)
+      if (!orders.length) return
       const located: Array<{ order: Order; location: { lat: number; lng: number; address: string } }> = []
       for (const order of orders) {
         try { located.push({ order, location: await this.locations.geocodeAddress(order.delivery_address as string) }) }

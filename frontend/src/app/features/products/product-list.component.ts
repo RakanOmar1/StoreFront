@@ -116,7 +116,13 @@ type StoreProduct = Product & {
               />
             </div>
 
-            <a class="featured-product-name" [routerLink]="['/products', product.id]">{{ product.name }}</a>
+            <div class="featured-product-copy">
+              <a class="featured-product-name" [routerLink]="['/products', product.id]">{{ product.name }}</a>
+              <span class="featured-product-category">
+                <i class="pi pi-tag" aria-hidden="true"></i>
+                {{ product.category }}
+              </span>
+            </div>
 
             <div class="featured-product-bottom">
               <strong>{{ product.viewPrice | currency }}</strong>

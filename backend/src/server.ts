@@ -23,13 +23,17 @@ app.use(bodyParser.json({ limit: '1mb' }))
 app.use('/uploads', express.static('uploads'))
 
 app.use((req: Request, res: Response, next) => {
-  const configuredOrigins = (process.env.CORS_ORIGINS || 'http://localhost:4200')
-    .split(',')
-    .map(origin => origin.trim())
-    .filter(Boolean)
+  const configuredOrigins = new Set([
+    'http://localhost:4200',
+    'http://127.0.0.1:4200',
+    ...(process.env.CORS_ORIGINS || '')
+      .split(',')
+      .map(origin => origin.trim())
+      .filter(Boolean)
+  ])
   const requestOrigin = req.headers.origin
 
-  if (requestOrigin && configuredOrigins.includes(requestOrigin)) {
+  if (requestOrigin && configuredOrigins.has(requestOrigin)) {
     res.header('Access-Control-Allow-Origin', requestOrigin)
     res.header('Vary', 'Origin')
   }

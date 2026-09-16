@@ -17,5 +17,7 @@ routes.post('/checkout', verifyAuthToken, controller.checkout)
 routes.put('/:id', verifyAuthToken, requireAdmin, controller.update)
 routes.delete('/:id', verifyAuthToken, requireAdmin, controller.delete)
 routes.post('/:id/products', verifyAuthToken, requireAdmin, controller.addProduct)
+routes.patch('/:id/products/:itemId', verifyAuthToken, requireAdmin, controller.updateProduct)
+routes.delete('/:id/products/:itemId', verifyAuthToken, requireAdmin, controller.removeProduct)
 
 export default routes

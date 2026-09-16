@@ -11,11 +11,13 @@ import { OrderService } from '../../core/services/order.service'
 import { SelectOption } from '../../shared/interfaces/select-option'
 import { TranslatePipe } from '../../core/i18n/translate.pipe'
 import { TranslationService } from '../../core/i18n/translation.service'
+import { OpenStreetMapPickerComponent } from '../../shared/openstreet-map-picker.component'
+import { MapPoint, OpenStreetMapService, ResolvedMapLocation } from '../../core/services/openstreet-map.service'
 
 @Component({
   selector: 'app-checkout',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterModule, DropdownModule, TranslatePipe],
+  imports: [CommonModule, ReactiveFormsModule, RouterModule, DropdownModule, TranslatePipe, OpenStreetMapPickerComponent],
   template: `
   <section class="checkout">
     <div class="page-heading">
@@ -60,6 +62,17 @@ import { TranslationService } from '../../core/i18n/translation.service'
           <label>{{ 'checkout.city' | t }}
             <input formControlName="city" placeholder="Jerusalem" />
           </label>
+
+          <div *ngIf="f.controls.deliveryType.value === 'DELIVERY'" class="checkout-location span-2">
+            <button type="button" class="checkout-location-button" (click)="openLocationPicker()" [disabled]="locatingAddress">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z" />
+                <circle cx="12" cy="10" r="2.5" />
+              </svg>
+              {{ locatingAddress ? ('checkout.loadingLocation' | t) : (hasOrderLocation ? ('checkout.changeLocation' | t) : ('checkout.chooseLocation' | t)) }}
+            </button>
+            <p>{{ 'checkout.orderOnlyLocation' | t }}</p>
+          </div>
 
           <label>
             {{ 'checkout.deliveryType' | t }}
@@ -143,6 +156,13 @@ import { TranslationService } from '../../core/i18n/translation.service'
         </button>
       </aside>
     </form>
+    <app-openstreet-map-picker
+      *ngIf="locationPickerOpen"
+      [initialPoint]="locationPickerPoint"
+      [rtl]="i18n.currentLanguage === 'ar'"
+      (selectedLocation)="applyOrderLocation($event)"
+      (cancel)="locationPickerOpen = false"
+    />
   </section>
   `
 })
@@ -163,6 +183,9 @@ export class CheckoutComponent {
   submitting = false
   success = false
   error: string | null = null
+  locationPickerOpen = false
+  locatingAddress = false
+  locationPickerPoint: MapPoint = { lat: 31.9038, lng: 35.2034 }
   private user = this.auth.getCurrentUser()
   private readonly destroy$ = new Subject<void>()
 
@@ -181,7 +204,8 @@ export class CheckoutComponent {
     private cart: CartService,
     private orderService: OrderService,
     private router: Router,
-    private i18n: TranslationService
+    public i18n: TranslationService,
+    private locations: OpenStreetMapService
   ) {
     this.cart.cart$.pipe(takeUntil(this.destroy$)).subscribe(items => {
       this.items = items
@@ -193,8 +217,49 @@ export class CheckoutComponent {
 
     this.f.controls.deliveryType.valueChanges.pipe(takeUntil(this.destroy$)).subscribe(type => {
       this.updateDeliveryValidators(type === 'DELIVERY')
+      if (type === 'DELIVERY' && !this.hasOrderLocation) {
+        window.setTimeout(() => this.openLocationPicker(), 0)
+      }
     })
     this.updateDeliveryValidators(this.f.controls.deliveryType.value === 'DELIVERY')
+
+    if (!this.hasOrderLocation) {
+      window.setTimeout(() => this.openLocationPicker(), 0)
+    }
+  }
+
+  get hasOrderLocation(): boolean {
+    return Boolean(this.f.controls.address.value?.trim() && this.f.controls.city.value?.trim())
+  }
+
+  async openLocationPicker(): Promise<void> {
+    if (this.locationPickerOpen || this.locatingAddress) return
+
+    const address = this.f.controls.address.value?.trim()
+    const city = this.f.controls.city.value?.trim()
+    const savedLocation = [address, city].filter(Boolean).join(', ')
+
+    if (savedLocation) {
+      this.locatingAddress = true
+      try {
+        const location = await this.locations.geocodeAddress(savedLocation, this.i18n.currentLanguage)
+        this.locationPickerPoint = { lat: location.lat, lng: location.lng }
+      } catch {
+        // Keep Ramallah as the safe map fallback when a saved address cannot be resolved.
+      } finally {
+        this.locatingAddress = false
+      }
+    }
+
+    this.locationPickerOpen = true
+  }
+
+  applyOrderLocation(location: ResolvedMapLocation): void {
+    this.f.patchValue({ address: location.address, city: location.city })
+    this.f.controls.address.markAsTouched()
+    this.f.controls.city.markAsTouched()
+    this.locationPickerPoint = { lat: location.lat, lng: location.lng }
+    this.locationPickerOpen = false
   }
 
   ngOnDestroy() {

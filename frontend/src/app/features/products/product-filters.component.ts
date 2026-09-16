@@ -43,7 +43,11 @@ import { TranslatePipe } from '../../core/i18n/translate.pipe'
       <div class="filter-category-group">
         <p class="filter-group-title"><span class="filter-label-copy"><i class="pi pi-th-large" aria-hidden="true"></i><span>{{ 'store.productCategories' | t }}</span></span></p>
         <div class="category-tabs" role="group" [attr.aria-label]="'store.productCategories' | t">
-          <button type="button" [class.active]="selectedCategory === 'all'" [attr.aria-pressed]="selectedCategory === 'all'" (click)="categorySelected.emit('all')">{{ 'common.all' | t }}</button>
+          <button type="button" [class.active]="selectedCategory === 'all'" [attr.aria-pressed]="selectedCategory === 'all'" (click)="categorySelected.emit('all')">
+            <span class="category-icon"><i class="pi pi-th-large" aria-hidden="true"></i></span>
+            <span class="category-name">{{ 'common.all' | t }}</span>
+            <i *ngIf="selectedCategory === 'all'" class="pi pi-check category-check" aria-hidden="true"></i>
+          </button>
           <button
             type="button"
             *ngFor="let category of categories; trackBy: trackCategory"
@@ -51,12 +55,17 @@ import { TranslatePipe } from '../../core/i18n/translate.pipe'
             [attr.aria-pressed]="selectedCategory === category"
             (click)="categorySelected.emit(category)"
           >
-            {{ categoryTranslationKey(category) | t }}
+            <span class="category-icon"><i [class]="categoryIcon(category)" aria-hidden="true"></i></span>
+            <span class="category-name">{{ categoryTranslationKey(category) | t }}</span>
+            <i *ngIf="selectedCategory === category" class="pi pi-check category-check" aria-hidden="true"></i>
           </button>
         </div>
       </div>
 
-      <button type="button" (click)="cleared.emit()">{{ 'common.clearFilters' | t }}</button>
+      <button type="button" class="clear-filters-button" (click)="cleared.emit()">
+        <i class="pi pi-filter-slash" aria-hidden="true"></i>
+        <span>{{ 'common.clearFilters' | t }}</span>
+      </button>
     </div>
   `,
   styles: [`
@@ -102,5 +111,21 @@ export class ProductFiltersComponent {
     }
 
     return keys[category.toLowerCase()] || category
+  }
+
+  categoryIcon(category: string): string {
+    const icons: Record<string, string> = {
+      'bakery': 'pi pi-shopping-bag',
+      'beverages': 'pi pi-bolt',
+      'dairy & eggs': 'pi pi-circle',
+      'fresh produce': 'pi pi-sun',
+      'frozen foods': 'pi pi-snowflake',
+      'household': 'pi pi-home',
+      'pantry': 'pi pi-box',
+      'personal care': 'pi pi-heart',
+      'snacks': 'pi pi-star'
+    }
+
+    return icons[category.toLowerCase()] || 'pi pi-tag'
   }
 }
