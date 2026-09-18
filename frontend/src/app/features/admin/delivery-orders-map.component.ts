@@ -18,6 +18,11 @@ import { Order } from '../../shared/interfaces/order'
       <div #mapCanvas class="delivery-orders-map-canvas"></div>
       <div *ngIf="loading" class="delivery-map-overlay"><i class="pi pi-spin pi-spinner" aria-hidden="true"></i><span>Locating delivery addresses...</span></div>
       <div *ngIf="error" class="delivery-map-overlay error"><i class="pi pi-exclamation-triangle" aria-hidden="true"></i><span>{{ error }}</span></div>
+      <aside *ngIf="warning" class="delivery-map-warning" role="status">
+        <i class="pi pi-exclamation-triangle" aria-hidden="true"></i>
+        <span>{{ warning }}</span>
+        <button *ngIf="unresolvedOrderIds.length" type="button" (click)="openUnresolvedOrder()">Open order #{{ unresolvedOrderIds[0] }}</button>
+      </aside>
       <div *ngIf="!loading && !error && !deliveryOrders.length" class="delivery-map-overlay empty"><i class="pi pi-map-marker" aria-hidden="true"></i><strong>No mapped deliveries yet</strong><span>Delivery orders with a saved address will appear here.</span></div>
       <p *ngIf="loading" class="map-dialog-state">Locating delivery addresses…</p>
       <p *ngIf="error" class="map-dialog-state error">{{ error }}</p>
@@ -31,6 +36,8 @@ export class DeliveryOrdersMapComponent implements AfterViewInit, OnChanges, OnD
   @ViewChild('mapCanvas', { static: true }) mapCanvas!: ElementRef<HTMLElement>
   loading = false
   error = ''
+  warning = ''
+  unresolvedOrderIds: number[] = []
   private viewReady = false
   private renderVersion = 0
 
@@ -58,6 +65,8 @@ export class DeliveryOrdersMapComponent implements AfterViewInit, OnChanges, OnD
     const version = ++this.renderVersion
     const orders = this.deliveryOrders
     this.error = ''
+    this.warning = ''
+    this.unresolvedOrderIds = []
     this.loading = true
 
     try {
@@ -70,7 +79,9 @@ export class DeliveryOrdersMapComponent implements AfterViewInit, OnChanges, OnD
       const located: Array<{ order: Order; location: { lat: number; lng: number; address: string } }> = []
       for (const order of orders) {
         try { located.push({ order, location: await this.locations.geocodeAddress(order.delivery_address as string) }) }
-        catch { /* keep rendering the addresses that can be resolved */ }
+        catch {
+          if (order.id != null) this.unresolvedOrderIds.push(Number(order.id))
+        }
       }
       if (version !== this.renderVersion) return
       if (!located.length) {
@@ -96,12 +107,22 @@ export class DeliveryOrdersMapComponent implements AfterViewInit, OnChanges, OnD
       } else if (located.length > 1) this.map.fitBounds(bounds, { padding: [48, 48], maxZoom: 16 })
       else this.map.setView(located[0].location, 16)
       const unresolved = orders.length - located.length
-      if (unresolved) this.error = `${unresolved} delivery ${unresolved === 1 ? 'address was' : 'addresses were'} not precise enough to locate.`
+      if (unresolved) {
+        const orderLabel = this.unresolvedOrderIds.length
+          ? `Order ${this.unresolvedOrderIds.map(id => `#${id}`).join(', ')}`
+          : `${unresolved} delivery ${unresolved === 1 ? 'order' : 'orders'}`
+        this.warning = `${orderLabel} needs a precise map location. The other delivery markers are still available.`
+      }
     } catch {
       this.error = 'OpenStreetMap could not load or the order addresses could not be located.'
     } finally {
       if (version === this.renderVersion) this.loading = false
     }
+  }
+
+  openUnresolvedOrder(): void {
+    const orderId = this.unresolvedOrderIds[0]
+    if (orderId) this.router.navigate(['/admin/orders', orderId])
   }
 
   private escapeHtml(value: string): string {

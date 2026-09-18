@@ -31,3 +31,34 @@
 - Comparison history: initial implementation completed; no visual comparison iteration was possible.
 
 final result: blocked
+
+## Featured products showcase
+
+- Replaced the PrimeNG carousel implementation with a curated Arabic RTL showcase rather than applying a visual restyle.
+- Desktop structure: one large featured-product card beside a 2x2 compact-product grid.
+- Tablet structure: featured card first, followed by a two-column compact grid.
+- Mobile structure: featured card followed by a touch-friendly horizontal scroll-snap product list.
+- Product states: current/original prices, calculated discount badges, availability labels, disabled out-of-stock actions, transient added-to-cart feedback, loading, and empty states.
+- Product imagery: fixed media proportions, `object-fit: cover`, clipped overflow, subtle hover zoom, and broken-image suppression.
+- Functionality: product routes, catalog CTA, existing cart service, and favorite-action behavior are preserved.
+- Dependency cleanup: carousel, tag, and button component imports used only by the former carousel were removed; no dependency was added.
+- Build check: passed (`ng build --configuration production`).
+- Test check: passed (14 ChromeHeadless tests).
+- Visual screenshot comparison: blocked because no interactive browser capture surface is available in this session.
+
+final result: blocked
+
+## Grocery homepage hero redesign
+
+- Reference: user-provided Arabic desktop hero screenshot.
+- Implementation route: `/products` (the storefront home/catalog route).
+- Implemented structure: spacious 330px RTL copy block, primary shopping CTA, location-neutral fast-delivery cue, one cohesive catalog-product image, fresh-picks badge, refined green-to-purple gradient, and a tighter connection to the category strip.
+- Responsive behavior: 55/45 two-column composition on desktop and tablet; stacked copy plus one wide image below 700px; reduced type, spacing, and image height on narrow phones.
+- Interaction: the primary CTA smoothly scrolls to the product catalog; focus styling is present for keyboard navigation.
+- Image fallback: a failed hero image advances through available catalog imagery and removes the visual cleanly if no valid image remains.
+- Overflow safeguards: all grid tracks use `minmax(0, ...)`, the image is clipped inside a bounded figure, and phone layouts collapse to one column.
+- Build check: passed (`ng build --configuration production`).
+- Test check: passed (14 ChromeHeadless tests).
+- Visual screenshot comparison: blocked because no interactive browser capture surface is available in this session.
+
+final result: blocked

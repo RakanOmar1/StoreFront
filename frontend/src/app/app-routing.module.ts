@@ -15,6 +15,7 @@ import { AdminCrudPageComponent } from './features/admin/admin-crud-page.compone
 import { AdminGuard } from './core/guards/admin.guard'
 import { UnsavedChangesGuard } from './core/guards/unsaved-changes.guard'
 import { DeliveryMapPageComponent } from './features/admin/delivery-map-page.component'
+import { CustomerOrdersComponent } from './features/orders/customer-orders.component'
 
 export const appRoutes: Routes = [
   { path: '', redirectTo: 'products', pathMatch: 'full' },
@@ -25,6 +26,7 @@ export const appRoutes: Routes = [
   { path: 'checkout', component: CheckoutComponent, canActivate: [AuthGuard] },
   { path: 'confirmation', component: OrderConfirmationComponent },
   { path: 'profile', component: ProfileComponent, canActivate: [AuthGuard], canDeactivate: [UnsavedChangesGuard] },
+  { path: 'orders', component: CustomerOrdersComponent, canActivate: [AuthGuard] },
   { path: 'admin', component: AdminDashboardComponent, canActivate: [AuthGuard, AdminGuard] },
   { path: 'admin/products', pathMatch: 'full', component: AdminTablePageComponent, canActivate: [AuthGuard, AdminGuard], data: { tableType: 'products' } },
   { path: 'admin/products/new', component: AdminCrudPageComponent, canActivate: [AuthGuard, AdminGuard], canDeactivate: [UnsavedChangesGuard], data: { entity: 'products', mode: 'create' } },

@@ -104,6 +104,13 @@ import { LanguageSwitcherComponent } from '../language-switcher/language-switche
               </svg>
               <span class="menu-label">{{ 'nav.cart' | t }} <b>{{ cartCount$ | async }}</b></span>
             </a>
+            <a routerLink="/orders" role="menuitem" (click)="closeMenu()">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M6 3h12v18H6z" />
+                <path d="M9 8h6M9 12h6M9 16h4" />
+              </svg>
+              <span class="menu-label">{{ 'nav.myOrders' | t }}</span>
+            </a>
             <button type="button" role="menuitem" (click)="logout()">
               <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M10 17v2H5V5h5v2" />

@@ -23,7 +23,7 @@ import { ProductCardComponent } from './product-card.component'
     :host { display: block; min-width: 0; }
     .product-grid { min-width: 0; align-items: stretch; }
     @media (max-width: 479px) {
-      .product-grid { grid-template-columns: minmax(0, 1fr); gap: .875rem; }
+      .product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .625rem; }
     }
     @media (min-width: 480px) and (max-width: 767px) {
       .product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .875rem; }

@@ -22,6 +22,18 @@ export class OrderService {
     return this.api.post<CheckoutResponse>('/orders/checkout', payload)
   }
 
+  getMyOrders(): Observable<Order[]> {
+    return this.api.get<Order[]>('/orders')
+  }
+
+  getOrder(id: number | string): Observable<Order> {
+    return this.api.get<Order>(`/orders/${id}`)
+  }
+
+  cancelOrder(id: number | string): Observable<Order> {
+    return this.api.patch<Order>(`/orders/${id}/cancel`, {})
+  }
+
   checkoutWithFallback(userId: number, items: CartItem[], payload: CheckoutPayload): Observable<CheckoutResponse> {
     if (!environment.apiCapabilities.checkout) {
       return this.legacyCheckout(userId, items, payload)

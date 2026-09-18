@@ -94,6 +94,19 @@ export class OrderModel {
     }
   }
 
+  async cancelByCustomer(id: string, userId: number): Promise<Order | undefined> {
+    const result = await pool.query(
+      `UPDATE orders
+       SET status = 'CANCELLED', updated_at = NOW()
+       WHERE id = $1
+         AND user_id = $2
+         AND status IN ('PENDING', 'CONFIRMED', 'active')
+       RETURNING *`,
+      [id, userId]
+    )
+    return result.rows[0]
+  }
+
   async updateProduct(orderId: string, itemId: string, quantity: number): Promise<OrderProduct> {
     const client = await pool.connect()
     try {

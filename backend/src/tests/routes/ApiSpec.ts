@@ -215,6 +215,15 @@ describe('Storefront API endpoints', () => {
       .put(`/orders/${ownOrder.rows[0].id}`)
       .set('Authorization', `Bearer ${customer.body.token}`)
       .send({ status: 'DELIVERED', payment_status: 'PAID' })
+    const forbiddenOrderCancel = await request(app)
+      .patch(`/orders/${orderId}/cancel`)
+      .set('Authorization', `Bearer ${customer.body.token}`)
+    const ownOrderCancel = await request(app)
+      .patch(`/orders/${ownOrder.rows[0].id}/cancel`)
+      .set('Authorization', `Bearer ${customer.body.token}`)
+    const repeatedCancel = await request(app)
+      .patch(`/orders/${ownOrder.rows[0].id}/cancel`)
+      .set('Authorization', `Bearer ${customer.body.token}`)
 
     expect(catalogWrite.status).toBe(403)
     expect(foreignOrder.status).toBe(403)
@@ -222,6 +231,10 @@ describe('Storefront API endpoints', () => {
     expect(ownOrderRead.status).toBe(200)
     expect(Number(ownOrderRead.body.user_id)).toBe(customer.body.user.id)
     expect(forbiddenOrderUpdate.status).toBe(403)
+    expect(forbiddenOrderCancel.status).toBe(403)
+    expect(ownOrderCancel.status).toBe(200)
+    expect(ownOrderCancel.body.status).toBe('CANCELLED')
+    expect(repeatedCancel.status).toBe(409)
   })
 
   it('handles order endpoints', async () => {

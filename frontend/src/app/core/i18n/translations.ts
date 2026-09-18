@@ -56,6 +56,7 @@ export const translations: Record<AppLanguage, TranslationDictionary> = {
       signup: 'Sign up',
       logout: 'Logout',
       myAccount: 'My Account',
+      myOrders: 'My Orders',
       menu: 'Menu',
       products: 'Products',
       categories: 'Categories',
@@ -66,6 +67,14 @@ export const translations: Record<AppLanguage, TranslationDictionary> = {
       users: 'Users',
       account: 'Account',
       storefront: 'Storefront'
+    },
+    customerOrders: {
+      eyebrow: 'ORDER HISTORY', title: 'My Orders', subtitle: 'Track current orders and review previous purchases.',
+      empty: 'You have not placed any orders yet.', shopNow: 'Start shopping', order: 'Order', placedOn: 'Placed on',
+      total: 'Order total', items: 'Items', delivery: 'Delivery', payment: 'Payment', details: 'View details',
+      hideDetails: 'Hide details', cancel: 'Cancel order', cancelling: 'Cancelling...', confirmCancel: 'Cancel this order?',
+      cancelError: 'The order could not be cancelled. It may already be in preparation.', loadError: 'Could not load your orders.',
+      noItems: 'No item details are available.', quantity: 'Qty', pickup: 'Store pickup', deliveryOrder: 'Delivery'
     },
     auth: {
       welcomeBack: 'Welcome back',
@@ -519,6 +528,7 @@ export const translations: Record<AppLanguage, TranslationDictionary> = {
       signup: 'إنشاء حساب',
       logout: 'تسجيل الخروج',
       myAccount: 'حسابي',
+      myOrders: 'طلباتي',
       menu: 'القائمة',
       products: 'المنتجات',
       categories: 'الفئات',
@@ -529,6 +539,14 @@ export const translations: Record<AppLanguage, TranslationDictionary> = {
       users: 'المستخدمون',
       account: 'الحساب',
       storefront: 'المتجر'
+    },
+    customerOrders: {
+      eyebrow: 'سجل الطلبات', title: 'طلباتي', subtitle: 'تابع طلباتك الحالية وراجع مشترياتك السابقة.',
+      empty: 'لم تقم بإرسال أي طلب حتى الآن.', shopNow: 'ابدأ التسوق', order: 'الطلب', placedOn: 'تاريخ الطلب',
+      total: 'إجمالي الطلب', items: 'المنتجات', delivery: 'التوصيل', payment: 'الدفع', details: 'عرض التفاصيل',
+      hideDetails: 'إخفاء التفاصيل', cancel: 'إلغاء الطلب', cancelling: 'جارٍ الإلغاء...', confirmCancel: 'هل تريد إلغاء هذا الطلب؟',
+      cancelError: 'تعذر إلغاء الطلب. ربما بدأ تحضيره بالفعل.', loadError: 'تعذر تحميل طلباتك.',
+      noItems: 'تفاصيل المنتجات غير متاحة.', quantity: 'الكمية', pickup: 'استلام من المتجر', deliveryOrder: 'توصيل'
     },
     auth: {
       welcomeBack: 'مرحباً بعودتك',

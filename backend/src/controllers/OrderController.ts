@@ -93,6 +93,32 @@ export class OrderController {
     }
   }
 
+  async cancel(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const before = await model.show(req.params.id)
+      if (!before) {
+        res.status(404).json('Order not found')
+        return
+      }
+
+      if (!isPrivileged(req) && Number(before.user_id) !== req.user?.id) {
+        res.status(403).json('You do not have access to this order')
+        return
+      }
+
+      const order = await model.cancelByCustomer(req.params.id, Number(before.user_id))
+      if (!order) {
+        res.status(409).json('This order can no longer be cancelled')
+        return
+      }
+
+      await activity.logUpdate('ORDER', req.params.id, req.user, before as Record<string, unknown>, order as Record<string, unknown>)
+      res.json(order)
+    } catch {
+      res.status(500).json('Could not cancel order')
+    }
+  }
+
   async updateProduct(req: Request, res: Response): Promise<void> {
     try {
       const quantity = Number(req.body.quantity)

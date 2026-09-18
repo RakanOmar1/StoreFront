@@ -30,26 +30,28 @@ type StoreProduct = Product & {
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
   <section class="products-page">
-    <section
-      class="market-hero"
-      [class.market-hero--rtl]="currentLang === 'ar'"
-      [attr.dir]="currentLang === 'ar' ? 'rtl' : 'ltr'"
-    >
+    <section class="market-hero market-hero--rtl" dir="rtl">
       <div class="market-hero-grid">
-        <div class="market-brand-lockup">
-          <span class="market-brand-seven">7</span>
-          <div>
-            <strong>7 Stars Mall</strong>
-            <small>{{ 'store.sportStore' | t }}</small>
+        <div class="market-hero-message">
+          <p class="eyebrow"><i class="pi pi-sparkles" aria-hidden="true"></i>سفن ستارز ماركت</p>
+          <h1>كل احتياجاتك اليومية، طازجة وتوصلك بسرعة</h1>
+          <p>تسوّق الخضار والفواكه، المخبوزات، الألبان، والمستلزمات المنزلية من مكان واحد.</p>
+          <div class="market-hero-actions">
+            <button type="button" class="market-hero-cta" (click)="scrollToCatalog()">
+              <i class="pi pi-shopping-bag" aria-hidden="true"></i>
+              <span>تسوّق الآن</span>
+              <i class="pi pi-arrow-left" aria-hidden="true"></i>
+            </button>
+            <span class="market-hero-benefit"><i class="pi pi-truck" aria-hidden="true"></i>توصيل سريع</span>
           </div>
         </div>
 
-        <div class="market-hero-message">
-          <p class="eyebrow">{{ 'store.collection' | t }}</p>
-          <h1>{{ 'store.heroTitle' | t }}</h1>
-          <p>{{ 'store.heroSubtitle' | t }}</p>
+        <div class="market-hero-visual" *ngIf="heroImageProduct as heroProduct">
+          <figure class="market-hero-photo market-hero-photo--main">
+            <img [src]="heroProduct.url" alt="مختارات بقالة طازجة" (error)="useNextHeroImage()" />
+          </figure>
+          <span class="market-hero-fresh-badge"><i class="pi pi-check-circle" aria-hidden="true"></i>مختارات طازجة</span>
         </div>
-
       </div>
     </section>
 
@@ -149,7 +151,7 @@ type StoreProduct = Product & {
       </div>
     </section>
 
-    <div class="catalog-layout" [attr.dir]="currentLang === 'ar' ? 'rtl' : 'ltr'">
+    <div id="catalog-products" class="catalog-layout" [attr.dir]="currentLang === 'ar' ? 'rtl' : 'ltr'">
       <aside class="catalog-filters catalog-filters--desktop" *ngIf="filtersLoaded">
         <app-product-filters
           [categories]="categories"
@@ -285,6 +287,7 @@ export class ProductListComponent implements OnInit, OnDestroy {
   isPhoneViewport = false
   featuredPageIndex = 0
   mobileFiltersOpen = false
+  heroImageIndex = 0
   sortBy: ProductSort = 'featured'
   private previousBodyOverflow = ''
   responsiveOptions = [
@@ -317,6 +320,19 @@ export class ProductListComponent implements OnInit, OnDestroy {
       { label: this.translations.translate('store.sortPriceHigh'), value: 'price-desc' },
       { label: this.translations.translate('store.sortName'), value: 'name' }
     ]
+  }
+
+  get heroImageProduct(): StoreProduct | undefined {
+    return this.products[this.heroImageIndex]
+  }
+
+  useNextHeroImage(): void {
+    if (this.heroImageIndex < this.products.length - 1) {
+      this.heroImageIndex += 1
+    } else {
+      this.heroImageIndex = this.products.length
+    }
+    this.cdr.markForCheck()
   }
 
   get departmentTiles(): Array<{ name: string; labelKey: string; icon: string; category: string }> {
@@ -460,6 +476,10 @@ export class ProductListComponent implements OnInit, OnDestroy {
     this.closeMobileFilters()
   }
 
+  scrollToCatalog(): void {
+    document.getElementById('catalog-products')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
   selectCategory(category: string) {
     if (this.selectedCategory === category) {
       return
@@ -601,6 +621,7 @@ export class ProductListComponent implements OnInit, OnDestroy {
         this.products = reset ? mappedProducts : [...this.products, ...mappedProducts]
         if (reset) {
           this.featuredPageIndex = 0
+          this.heroImageIndex = 0
         }
         this.hasMore = products.length === this.pageSize
         this.loading = false
