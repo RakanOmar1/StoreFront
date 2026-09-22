@@ -46,6 +46,10 @@ import { TranslatePipe } from '../../core/i18n/translate.pipe'
           <span><i class="pi pi-receipt" aria-hidden="true"></i></span>
           {{ 'nav.orders' | t }}
         </a>
+        <a routerLink="/admin/brands" routerLinkActive="active" (click)="closeMenu()">
+          <span><i class="pi pi-bookmark" aria-hidden="true"></i></span>
+          {{ 'nav.brands' | t }}
+        </a>
         <a routerLink="/admin/delivery-map" routerLinkActive="active" (click)="closeMenu()">
           <span><i class="pi pi-map-marker" aria-hidden="true"></i></span>
           {{ 'nav.deliveryMap' | t }}

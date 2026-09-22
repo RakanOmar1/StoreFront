@@ -257,6 +257,7 @@ export class ProfileComponent implements CanLeaveWithUnsavedChanges {
   locationPickerOpen = false
   locatingAddress = false
   locationPickerPoint: MapPoint = { lat: 31.9038, lng: 35.2034 }
+  selectedLocationPoint: MapPoint | null = null
   private discardResolver?: (discard: boolean) => void
   user = this.auth.getCurrentUser()
 
@@ -281,7 +282,12 @@ export class ProfileComponent implements CanLeaveWithUnsavedChanges {
     private router: Router,
     public i18n: TranslationService,
     private locations: OpenStreetMapService
-  ) {}
+  ) {
+    if (this.user?.latitude != null && this.user?.longitude != null) {
+      this.locationPickerPoint = { lat: this.user.latitude, lng: this.user.longitude }
+      this.selectedLocationPoint = { ...this.locationPickerPoint }
+    }
+  }
 
   get isAdmin(): boolean {
     return this.user?.role === 'ADMIN' || this.user?.role === 'MANAGER'
@@ -349,6 +355,7 @@ export class ProfileComponent implements CanLeaveWithUnsavedChanges {
     this.f.controls.city.markAsTouched()
     this.f.markAsDirty()
     this.locationPickerPoint = { lat: location.lat, lng: location.lng }
+    this.selectedLocationPoint = { lat: location.lat, lng: location.lng }
     this.locationPickerOpen = false
   }
 
@@ -377,7 +384,9 @@ export class ProfileComponent implements CanLeaveWithUnsavedChanges {
       email: email || null,
       phone: phone || null,
       address: address || null,
-      city: city || null
+      city: city || null,
+      latitude: this.selectedLocationPoint?.lat,
+      longitude: this.selectedLocationPoint?.lng
     }).subscribe({
       next: savedUser => {
         this.user = savedUser

@@ -32,6 +32,15 @@ export const createTables = async (): Promise<void> => {
       is_active BOOLEAN NOT NULL DEFAULT TRUE
     );
 
+    CREATE TABLE IF NOT EXISTS brands (
+      id SERIAL PRIMARY KEY,
+      name VARCHAR(120) NOT NULL UNIQUE,
+      description TEXT,
+      is_active BOOLEAN NOT NULL DEFAULT TRUE,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+    );
+
     CREATE TABLE IF NOT EXISTS products (
       id SERIAL PRIMARY KEY,
       name VARCHAR(100) NOT NULL,
@@ -41,6 +50,7 @@ export const createTables = async (): Promise<void> => {
       url TEXT,
       category_id BIGINT REFERENCES categories(id) ON DELETE RESTRICT,
       promotion_id BIGINT REFERENCES promotions(id) ON DELETE SET NULL,
+      brand_id BIGINT REFERENCES brands(id) ON DELETE RESTRICT,
       created_at TIMESTAMP NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMP NOT NULL DEFAULT NOW()
     );
@@ -71,6 +81,8 @@ export const createTables = async (): Promise<void> => {
       payment_method VARCHAR(20) NOT NULL DEFAULT 'CASH',
       delivery_type VARCHAR(20) NOT NULL DEFAULT 'PICKUP',
       delivery_address TEXT,
+      delivery_latitude DOUBLE PRECISION,
+      delivery_longitude DOUBLE PRECISION,
       created_at TIMESTAMP NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMP NOT NULL DEFAULT NOW()
     );
@@ -101,16 +113,25 @@ export const createTables = async (): Promise<void> => {
       ADD COLUMN IF NOT EXISTS name VARCHAR(200),
       ADD COLUMN IF NOT EXISTS email VARCHAR(255),
       ADD COLUMN IF NOT EXISTS phone VARCHAR(50),
+      ADD COLUMN IF NOT EXISTS address VARCHAR(500),
+      ADD COLUMN IF NOT EXISTS city VARCHAR(120),
+      ADD COLUMN IF NOT EXISTS latitude DOUBLE PRECISION,
+      ADD COLUMN IF NOT EXISTS longitude DOUBLE PRECISION,
+      ADD COLUMN IF NOT EXISTS avatar_url TEXT,
       ADD COLUMN IF NOT EXISTS role VARCHAR(20) NOT NULL DEFAULT 'CUSTOMER',
       ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT TRUE,
       ADD COLUMN IF NOT EXISTS created_at TIMESTAMP NOT NULL DEFAULT NOW(),
       ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP NOT NULL DEFAULT NOW();
 
     ALTER TABLE products
+      ALTER COLUMN price TYPE NUMERIC(10, 2) USING price::NUMERIC(10, 2);
+
+    ALTER TABLE products
       ADD COLUMN IF NOT EXISTS description TEXT,
       ADD COLUMN IF NOT EXISTS url TEXT,
       ADD COLUMN IF NOT EXISTS category_id BIGINT REFERENCES categories(id) ON DELETE RESTRICT,
       ADD COLUMN IF NOT EXISTS promotion_id BIGINT REFERENCES promotions(id) ON DELETE SET NULL,
+      ADD COLUMN IF NOT EXISTS brand_id BIGINT REFERENCES brands(id) ON DELETE RESTRICT,
       ADD COLUMN IF NOT EXISTS created_at TIMESTAMP NOT NULL DEFAULT NOW(),
       ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP NOT NULL DEFAULT NOW();
 
@@ -120,6 +141,8 @@ export const createTables = async (): Promise<void> => {
       ADD COLUMN IF NOT EXISTS payment_method VARCHAR(20) NOT NULL DEFAULT 'CASH',
       ADD COLUMN IF NOT EXISTS delivery_type VARCHAR(20) NOT NULL DEFAULT 'PICKUP',
       ADD COLUMN IF NOT EXISTS delivery_address TEXT,
+      ADD COLUMN IF NOT EXISTS delivery_latitude DOUBLE PRECISION,
+      ADD COLUMN IF NOT EXISTS delivery_longitude DOUBLE PRECISION,
       ADD COLUMN IF NOT EXISTS created_at TIMESTAMP NOT NULL DEFAULT NOW(),
       ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP NOT NULL DEFAULT NOW();
 
@@ -134,6 +157,6 @@ export const createTables = async (): Promise<void> => {
 
 export const clearTables = async (): Promise<void> => {
   await pool.query(
-    'TRUNCATE activity_logs, cart_items, carts, order_products, orders, products, promotions, categories, users RESTART IDENTITY CASCADE'
+    'TRUNCATE activity_logs, cart_items, carts, order_products, orders, products, promotions, categories, brands, users RESTART IDENTITY CASCADE'
   )
 }

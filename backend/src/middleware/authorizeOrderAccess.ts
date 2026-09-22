@@ -11,8 +11,19 @@ export const authorizeOrderAccess = async (req: AuthRequest, res: Response, next
       return
     }
 
-    const result = await pool.query('SELECT user_id FROM orders WHERE id = $1', [req.params.id])
+    const result = await pool.query(
+      'SELECT user_id, delivery_type FROM orders WHERE id = $1',
+      [req.params.id]
+    )
     if (!result.rows[0]) {
+      next()
+      return
+    }
+    if (req.user?.role === 'DELIVERY') {
+      if (result.rows[0].delivery_type !== 'DELIVERY') {
+        res.status(403).json('Delivery staff can only access delivery orders')
+        return
+      }
       next()
       return
     }

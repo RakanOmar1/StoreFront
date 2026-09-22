@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
@@ -12,23 +13,33 @@ class CategoriesScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(categoriesProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('Categories')),
+      appBar: AppBar(title: Text('categories'.tr())),
       body: state.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (_, _) => Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('Could not load categories'),
+              Text(
+                context.locale.languageCode == 'ar'
+                    ? 'تعذر تحميل الفئات'
+                    : 'Could not load categories',
+              ),
               TextButton(
                 onPressed: () => ref.invalidate(categoriesProvider),
-                child: const Text('Retry'),
+                child: Text('retry'.tr()),
               ),
             ],
           ),
         ),
         data: (items) => items.isEmpty
-            ? const Center(child: Text('No categories available'))
+            ? Center(
+                child: Text(
+                  context.locale.languageCode == 'ar'
+                      ? 'لا توجد فئات متاحة'
+                      : 'No categories available',
+                ),
+              )
             : RefreshIndicator(
                 onRefresh: () => ref.refresh(categoriesProvider.future),
                 child: GridView.builder(
@@ -54,9 +65,11 @@ class CategoriesScreen extends ConsumerWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const CircleAvatar(
-                                backgroundColor: Color(0xffeaf6ee),
-                                child: Icon(
+                              CircleAvatar(
+                                backgroundColor: Theme.of(
+                                  context,
+                                ).colorScheme.secondaryContainer,
+                                child: const Icon(
                                   Icons.shopping_basket_outlined,
                                   color: AppColors.green,
                                 ),
@@ -111,7 +124,7 @@ class CategoryProductRoute extends ConsumerWidget {
             body: Center(
               child: TextButton(
                 onPressed: () => ref.invalidate(categoryProvider(id)),
-                child: const Text('Retry'),
+                child: Text('retry'.tr()),
               ),
             ),
           ),

@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../models/checkout_models.dart';
 import '../providers/checkout_provider.dart';
+import '../../../shared/location_picker.dart';
+import 'package:latlong2/latlong.dart';
 
 class CheckoutScreen extends ConsumerStatefulWidget {
   const CheckoutScreen({super.key});
@@ -19,7 +21,9 @@ class _CheckoutState extends ConsumerState<CheckoutScreen> {
       address = TextEditingController(),
       city = TextEditingController();
   DeliveryType delivery = DeliveryType.delivery;
+  PaymentMethod payment = PaymentMethod.cash;
   bool initialized = false;
+  LatLng? selectedPoint;
   @override
   void dispose() {
     for (final c in [name, phone, address, city]) {
@@ -43,6 +47,11 @@ class _CheckoutState extends ConsumerState<CheckoutScreen> {
         } else {
           name.text = auth.user!.fullName;
           phone.text = auth.user!.phone ?? '';
+          address.text = auth.user!.address ?? '';
+          city.text = auth.user!.city ?? '';
+          if (auth.user!.latitude != null && auth.user!.longitude != null) {
+            selectedPoint = LatLng(auth.user!.latitude!, auth.user!.longitude!);
+          }
           ref.read(checkoutProvider.notifier).synchronize();
         }
       });
@@ -113,25 +122,85 @@ class _CheckoutState extends ConsumerState<CheckoutScreen> {
             ]),
             if (delivery == DeliveryType.delivery)
               _section('deliveryAddress', [
+                LocationPickerButton(
+                  initialPoint: selectedPoint,
+                  onSelected: (location) {
+                    if (location.address.trim().isNotEmpty) {
+                      address.text = location.address;
+                    }
+                    if (location.city.trim().isNotEmpty) {
+                      city.text = location.city;
+                    }
+                    setState(() => selectedPoint = location.point);
+                  },
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Row(
+                    children: [
+                      Icon(
+                        selectedPoint == null
+                            ? Icons.info_outline
+                            : Icons.check_circle_outline,
+                        size: 18,
+                        color: selectedPoint == null
+                            ? Theme.of(context).colorScheme.error
+                            : const Color(0xff16803c),
+                      ),
+                      const SizedBox(width: 7),
+                      Expanded(
+                        child: Text(
+                          selectedPoint == null
+                              ? (context.locale.languageCode == 'ar'
+                                    ? 'اختيار نقطة على الخريطة مطلوب للتوصيل'
+                                    : 'A map point is required for delivery')
+                              : (context.locale.languageCode == 'ar'
+                                    ? 'تم حفظ موقع التوصيل الدقيق'
+                                    : 'Exact delivery location saved'),
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
                 _field(address, 'streetAddress', min: 5),
                 _field(city, 'city'),
               ]),
             _section('paymentMethod', [
               ListTile(
                 contentPadding: EdgeInsets.zero,
-                leading: const Icon(
-                  Icons.check_circle,
-                  color: Color(0xff16803c),
+                onTap: () => setState(() => payment = PaymentMethod.cash),
+                leading: Icon(
+                  payment == PaymentMethod.cash
+                      ? Icons.radio_button_checked
+                      : Icons.radio_button_off,
+                  color: Theme.of(context).colorScheme.primary,
                 ),
+                trailing: const Icon(Icons.payments_outlined),
                 title: Text('cash'.tr()),
-                subtitle: Text('cash'.tr()),
+                subtitle: Text(
+                  context.locale.languageCode == 'ar'
+                      ? 'ادفع عند استلام طلبك'
+                      : 'Pay when your order arrives',
+                ),
               ),
               ListTile(
-                enabled: false,
                 contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.credit_card),
+                onTap: () => setState(() => payment = PaymentMethod.online),
+                leading: Icon(
+                  payment == PaymentMethod.online
+                      ? Icons.radio_button_checked
+                      : Icons.radio_button_off,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                trailing: const Icon(Icons.credit_card),
                 title: Text('onlinePayment'.tr()),
-                subtitle: Text('comingSoon'.tr()),
+                subtitle: Text(
+                  context.locale.languageCode == 'ar'
+                      ? 'يبقى الدفع قيد الانتظار حتى تأكيده'
+                      : 'Payment remains pending until confirmed',
+                ),
               ),
             ]),
             _section('orderReview', [
@@ -192,7 +261,7 @@ class _CheckoutState extends ConsumerState<CheckoutScreen> {
       bottomNavigationBar: SafeArea(
         top: false,
         child: Container(
-          color: Colors.white,
+          color: Theme.of(context).colorScheme.surface,
           padding: const EdgeInsets.all(12),
           child: FilledButton(
             onPressed: state.busy ? null : _submit,
@@ -259,6 +328,18 @@ class _CheckoutState extends ConsumerState<CheckoutScreen> {
   );
   Future<void> _submit() async {
     if (!formKey.currentState!.validate()) return;
+    if (delivery == DeliveryType.delivery && selectedPoint == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            context.locale.languageCode == 'ar'
+                ? 'حدد موقع التوصيل بدقة على الخريطة أولاً'
+                : 'Select the exact delivery location on the map first',
+          ),
+        ),
+      );
+      return;
+    }
     final deliveryAddress = delivery == DeliveryType.delivery
         ? '${address.text.trim()}, ${city.text.trim()}'
         : null;
@@ -266,9 +347,11 @@ class _CheckoutState extends ConsumerState<CheckoutScreen> {
         .read(checkoutProvider.notifier)
         .submit(
           CheckoutRequest(
-            paymentMethod: PaymentMethod.cash,
+            paymentMethod: payment,
             deliveryType: delivery,
             deliveryAddress: deliveryAddress,
+            deliveryLatitude: selectedPoint?.latitude,
+            deliveryLongitude: selectedPoint?.longitude,
           ),
         );
     if (result != null && mounted) {

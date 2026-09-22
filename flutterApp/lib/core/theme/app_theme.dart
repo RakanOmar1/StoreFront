@@ -9,8 +9,9 @@ abstract final class AppColors {
       background = Color(0xfff5f7f6);
 }
 
-ThemeData buildTheme() => ThemeData(
+ThemeData buildTheme({bool arabic = false}) => ThemeData(
   useMaterial3: true,
+  fontFamily: arabic ? 'Cairo' : null,
   scaffoldBackgroundColor: AppColors.background,
   colorScheme: ColorScheme.fromSeed(
     seedColor: AppColors.green,
@@ -37,10 +38,16 @@ ThemeData buildTheme() => ThemeData(
       borderSide: BorderSide.none,
     ),
   ),
+  navigationBarTheme: const NavigationBarThemeData(
+    backgroundColor: Colors.white,
+    indicatorColor: Color(0xffe2f3e7),
+  ),
+  dividerColor: const Color(0xffe2e8e4),
 );
 
-ThemeData buildDarkTheme() => ThemeData(
+ThemeData buildDarkTheme({bool arabic = false}) => ThemeData(
   useMaterial3: true,
+  fontFamily: arabic ? 'Cairo' : null,
   brightness: Brightness.dark,
   colorScheme: ColorScheme.fromSeed(
     seedColor: AppColors.green,
@@ -67,4 +74,10 @@ ThemeData buildDarkTheme() => ThemeData(
       borderSide: BorderSide.none,
     ),
   ),
+  navigationBarTheme: const NavigationBarThemeData(
+    backgroundColor: Color(0xff151d18),
+    indicatorColor: Color(0xff294c35),
+  ),
+  dividerColor: const Color(0xff334039),
+  dialogTheme: const DialogThemeData(backgroundColor: Color(0xff19211c)),
 );

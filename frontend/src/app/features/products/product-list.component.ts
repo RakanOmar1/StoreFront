@@ -130,7 +130,15 @@ type StoreProduct = Product & {
               <strong>{{ product.viewPrice | currency }}</strong>
               <span>
                 <p-button icon="pi pi-heart" severity="secondary" [outlined]="true" styleClass="featured-icon-button" (onClick)="stopFeaturedAction($event)" />
-                <p-button icon="pi pi-shopping-cart" styleClass="featured-icon-button featured-cart-button" (onClick)="addFeatured(product, $event)" />
+                <span class="featured-cart-action" [class.has-items]="(cartQuantities[product.id] || 0) > 0">
+                  <p-button
+                    icon="pi pi-shopping-cart"
+                    styleClass="featured-icon-button featured-cart-button"
+                    [ariaLabel]="'store.addToCart' | t"
+                    (onClick)="addFeatured(product, $event)"
+                  />
+                  <b *ngIf="(cartQuantities[product.id] || 0) > 0" class="featured-cart-quantity" aria-live="polite">{{ cartQuantities[product.id] }}</b>
+                </span>
               </span>
             </div>
           </article>

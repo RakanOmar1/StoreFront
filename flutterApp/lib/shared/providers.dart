@@ -9,9 +9,11 @@ export '../features/cart/providers/cart_provider.dart';
 
 final secureStorageProvider = Provider((_) => const FlutterSecureStorage());
 final animationsEnabledProvider = Provider((_) => true);
-final apiClientProvider = Provider(
-  (r) => ApiClient(r.watch(secureStorageProvider)),
-);
+final apiClientProvider = Provider((r) {
+  final client = ApiClient(r.watch(secureStorageProvider));
+  r.onDispose(client.dispose);
+  return client;
+});
 final productRepositoryProvider = Provider(
   (r) => ProductRepository(r.watch(apiClientProvider)),
 );

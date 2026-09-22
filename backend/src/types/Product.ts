@@ -7,6 +7,8 @@ export type Product = {
   images?: string[] | null
   category?: string | null
   category_id?: number | null
+  brand_id?: number | null
+  brand?: string | null
   promotion_id?: number | null
   promotion?: {
     id: number

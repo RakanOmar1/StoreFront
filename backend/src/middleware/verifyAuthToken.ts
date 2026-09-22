@@ -1,12 +1,13 @@
 import { NextFunction, Request, Response } from 'express'
 import jwt from 'jsonwebtoken'
+import pool from '../config/database'
 
 const tokenSecret = (): string => {
   if (!process.env.TOKEN_SECRET) throw new Error('TOKEN_SECRET must be configured')
   return process.env.TOKEN_SECRET
 }
 
-export const verifyAuthToken = (req: Request, res: Response, next: NextFunction): void => {
+export const verifyAuthToken = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const header = req.headers.authorization
 
@@ -22,17 +23,39 @@ export const verifyAuthToken = (req: Request, res: Response, next: NextFunction)
       user?: { id?: number; role?: string }
     }
 
+    const id = Number(decoded.id || decoded.user?.id)
+    const tokenRole = String(decoded.role || decoded.user?.role || 'CUSTOMER').toUpperCase()
+    if (!Number.isInteger(id) || id <= 0) {
+      res.status(401).json({ code: 'INVALID_SESSION', message: 'Invalid token' })
+      return
+    }
+
+    const current = await pool.query(
+      'SELECT role, is_active FROM users WHERE id = $1',
+      [id]
+    )
+    const user = current.rows[0] as { role?: string; is_active?: boolean } | undefined
+    const currentRole = String(user?.role || 'CUSTOMER').toUpperCase()
+
+    if (!user || user.is_active === false || currentRole !== tokenRole) {
+      res.status(401).json({
+        code: 'SESSION_STALE',
+        message: 'Your account permissions changed. Sign in again.'
+      })
+      return
+    }
+
     ;(req as Request & { user?: { id?: number; role?: string } }).user = {
-      id: decoded.id || decoded.user?.id,
-      role: decoded.role || decoded.user?.role || 'CUSTOMER'
+      id,
+      role: currentRole
     }
     next()
   } catch (error) {
-    res.status(401).json('Invalid token')
+    res.status(401).json({ code: 'INVALID_SESSION', message: 'Invalid token' })
   }
 }
 
-export const optionalAuthToken = (req: Request, res: Response, next: NextFunction): void => {
+export const optionalAuthToken = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const header = req.headers.authorization
 
@@ -48,12 +71,34 @@ export const optionalAuthToken = (req: Request, res: Response, next: NextFunctio
       user?: { id?: number; role?: string }
     }
 
+    const id = Number(decoded.id || decoded.user?.id)
+    const tokenRole = String(decoded.role || decoded.user?.role || 'CUSTOMER').toUpperCase()
+    if (!Number.isInteger(id) || id <= 0) {
+      res.status(401).json({ code: 'INVALID_SESSION', message: 'Invalid token' })
+      return
+    }
+
+    const current = await pool.query(
+      'SELECT role, is_active FROM users WHERE id = $1',
+      [id]
+    )
+    const user = current.rows[0] as { role?: string; is_active?: boolean } | undefined
+    const currentRole = String(user?.role || 'CUSTOMER').toUpperCase()
+    if (!user || user.is_active === false || currentRole !== tokenRole) {
+      res.status(401).json({
+        code: 'SESSION_STALE',
+        message: 'Your account permissions changed. Sign in again.'
+      })
+      return
+    }
+
     ;(req as Request & { user?: { id?: number; role?: string } }).user = {
-      id: decoded.id || decoded.user?.id,
-      role: decoded.role || decoded.user?.role || 'CUSTOMER'
+      id,
+      role: currentRole
     }
   } catch (error) {
-    // Optional authentication intentionally ignores invalid tokens to preserve public signup.
+    res.status(401).json({ code: 'INVALID_SESSION', message: 'Invalid token' })
+    return
   }
 
   next()

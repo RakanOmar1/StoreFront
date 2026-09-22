@@ -21,18 +21,18 @@ import { TranslationService } from '../../core/i18n/translation.service'
           <strong>Stars Mall</strong>
         </div>
         <div>
-          <p class="eyebrow">Fresh checkout</p>
-          <h2>Sign in for faster supermarket orders.</h2>
-          <p>Keep your grocery cart synced, reorder daily essentials, and manage delivery details in one place.</p>
+          <p class="eyebrow">{{ 'auth.loginBrandEyebrow' | t }}</p>
+          <h2>{{ 'auth.loginBrandTitle' | t }}</h2>
+          <p>{{ 'auth.loginBrandDescription' | t }}</p>
         </div>
         <div class="auth-benefits">
-          <span>Fresh picks</span>
-          <span>Secure checkout</span>
-          <span>Fast delivery</span>
+          <span><i class="pi pi-sparkles" aria-hidden="true"></i>{{ 'auth.freshPicks' | t }}</span>
+          <span><i class="pi pi-shield" aria-hidden="true"></i>{{ 'auth.secureCheckout' | t }}</span>
+          <span><i class="pi pi-send" aria-hidden="true"></i>{{ 'auth.fastDelivery' | t }}</span>
         </div>
       </aside>
 
-      <form class="auth-card" [formGroup]="f" (ngSubmit)="submit()">
+      <form class="auth-card login-card" [formGroup]="f" (ngSubmit)="submit()">
         <div>
           <p class="eyebrow">{{ 'auth.welcomeBack' | t }}</p>
           <h1>{{ 'auth.loginTitle' | t }}</h1>
@@ -41,13 +41,24 @@ import { TranslationService } from '../../core/i18n/translation.service'
 
         <label>
           {{ 'auth.identifier' | t }}
-          <input formControlName="identifier" placeholder="ada@example.com" autocomplete="username" />
+          <input formControlName="identifier" [placeholder]="'auth.identifierPlaceholder' | t" autocomplete="username" />
           <span *ngIf="f.controls.identifier.invalid && f.controls.identifier.touched">{{ 'auth.identifierRequired' | t }}</span>
         </label>
 
         <label>
           {{ 'auth.password' | t }}
-          <input formControlName="password" type="password" placeholder="Your password" autocomplete="current-password" />
+          <span class="password-input-wrap">
+            <input formControlName="password" [type]="passwordVisible ? 'text' : 'password'" [placeholder]="'auth.passwordPlaceholder' | t" autocomplete="current-password" />
+            <button
+              type="button"
+              class="password-visibility-button"
+              (click)="passwordVisible = !passwordVisible"
+              [attr.aria-label]="(passwordVisible ? 'auth.hidePassword' : 'auth.showPassword') | t"
+              [attr.aria-pressed]="passwordVisible"
+            >
+              <i class="pi" [class.pi-eye]="!passwordVisible" [class.pi-eye-slash]="passwordVisible" aria-hidden="true"></i>
+            </button>
+          </span>
           <span *ngIf="f.controls.password.invalid && f.controls.password.touched">{{ 'auth.passwordRequired' | t }}</span>
         </label>
 
@@ -68,6 +79,7 @@ import { TranslationService } from '../../core/i18n/translation.service'
 })
 export class LoginComponent {
   submitting = false
+  passwordVisible = false
   error: string | null = null
 
   f = this.fb.nonNullable.group({

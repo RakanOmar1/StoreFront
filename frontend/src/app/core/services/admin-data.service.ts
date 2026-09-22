@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core'
 import { forkJoin, Observable, of } from 'rxjs'
 import { catchError, map, timeout } from 'rxjs/operators'
 import { Order, OrderItem } from '../../shared/interfaces/order'
-import { Category, Product, Promotion } from '../../shared/interfaces/product'
+import { Brand, Category, Product, Promotion } from '../../shared/interfaces/product'
 import { PublicUser } from '../../shared/interfaces/user'
 import { ApiUrlService } from './api-url.service'
 import { ProductService } from './product.service'
@@ -82,6 +82,12 @@ export class AdminDataService {
       map(response => this.asList(response))
     )
   }
+
+  loadBrands(): Observable<Brand[]> { return this.api.get<Brand[] | { value?: Brand[] }>('/brands').pipe(map(response => this.asList(response))) }
+  getBrand(id: number | string): Observable<Brand> { return this.api.get<Brand>(`/brands/${id}`) }
+  createBrand(payload: Partial<Brand>): Observable<Brand> { return this.api.post<Brand>('/brands', payload) }
+  updateBrand(id: number | string, payload: Partial<Brand>): Observable<Brand> { return this.api.put<Brand>(`/brands/${id}`, payload) }
+  deleteBrand(id: number | string): Observable<Brand> { return this.api.delete<Brand>(`/brands/${id}`) }
 
   loadPromotions(): Observable<Promotion[]> {
     return this.api.get<Promotion[] | { value?: Promotion[] }>('/promotions').pipe(

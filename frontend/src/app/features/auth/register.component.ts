@@ -23,14 +23,14 @@ import { MapPoint, ResolvedMapLocation } from '../../core/services/openstreet-ma
           <strong>Stars Mall</strong>
         </div>
         <div>
-          <p class="eyebrow">Fresh account</p>
-          <h2>Create your supermarket profile.</h2>
-          <p>Save delivery details, keep your grocery cart synced, and move through checkout faster.</p>
+          <p class="eyebrow">{{ 'auth.brandEyebrow' | t }}</p>
+          <h2>{{ 'auth.brandTitle' | t }}</h2>
+          <p>{{ 'auth.brandDescription' | t }}</p>
         </div>
         <div class="auth-benefits">
-          <span>Saved cart</span>
-          <span>Order history</span>
-          <span>Fast delivery</span>
+          <span><i class="pi pi-shopping-cart" aria-hidden="true"></i>{{ 'auth.savedCart' | t }}</span>
+          <span><i class="pi pi-history" aria-hidden="true"></i>{{ 'auth.orderHistory' | t }}</span>
+          <span><i class="pi pi-send" aria-hidden="true"></i>{{ 'auth.fastDelivery' | t }}</span>
         </div>
       </aside>
 
@@ -65,10 +65,16 @@ import { MapPoint, ResolvedMapLocation } from '../../core/services/openstreet-ma
         </label>
 
         <div class="signup-location-block">
-          <button type="button" class="location-button" [disabled]="locating" (click)="useCurrentLocation()">
-            <i class="pi pi-map-marker" aria-hidden="true"></i>
-            {{ locating ? ('auth.locating' | t) : ('auth.useMyLocation' | t) }}
-          </button>
+          <div class="location-action-row">
+            <button type="button" class="location-button" [disabled]="locating" (click)="useCurrentLocation()">
+              <i class="pi pi-crosshairs" aria-hidden="true"></i>
+              {{ locating ? ('auth.locating' | t) : ('auth.useMyLocation' | t) }}
+            </button>
+            <button type="button" class="location-map-button" (click)="openLocationMap()">
+              <i class="pi pi-map" aria-hidden="true"></i>
+              {{ 'auth.openMap' | t }}
+            </button>
+          </div>
           <small>{{ 'auth.locationHint' | t }}</small>
           <small class="location-attribution">© OpenStreetMap contributors</small>
           <p *ngIf="locationMessage" class="location-status success">{{ locationMessage }}</p>
@@ -127,6 +133,7 @@ export class RegisterComponent {
   showRamallahFallback = false
   mapOpen = false
   mapPoint: MapPoint = { lat: 31.9038, lng: 35.2034 }
+  selectedPoint: MapPoint | null = null
 
   f = this.fb.nonNullable.group({
     firstname: ['', Validators.required],
@@ -200,7 +207,9 @@ export class RegisterComponent {
       ...payload,
       name: `${payload.firstname} ${payload.lastname}`.trim(),
       email: payload.email || null,
-      phone: payload.phone || null
+      phone: payload.phone || null,
+      latitude: this.selectedPoint?.lat,
+      longitude: this.selectedPoint?.lng
     }).pipe(
       switchMap(() => this.cart.syncToBackend()),
       switchMap(() => this.cart.loadBackendCart())
@@ -213,11 +222,17 @@ export class RegisterComponent {
     })
   }
 
+  openLocationMap(): void {
+    this.locationError = null
+    this.mapOpen = true
+  }
+
   applyMapLocation(location: ResolvedMapLocation): void {
     this.f.patchValue({ city: location.city, address: location.address })
     this.f.controls.city.markAsTouched()
     this.f.controls.address.markAsTouched()
     this.mapPoint = { lat: location.lat, lng: location.lng }
+    this.selectedPoint = { lat: location.lat, lng: location.lng }
     this.mapOpen = false
     this.locationError = null
     this.showRamallahFallback = false

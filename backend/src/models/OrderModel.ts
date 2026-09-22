@@ -13,6 +13,13 @@ export class OrderModel {
     return result.rows
   }
 
+  async indexDeliveries(): Promise<Order[]> {
+    const result = await pool.query(
+      "SELECT * FROM orders WHERE delivery_type = 'DELIVERY' ORDER BY id"
+    )
+    return result.rows
+  }
+
   async show(id: string): Promise<Order> {
     const result = await pool.query('SELECT * FROM orders WHERE id = $1', [id])
     const order = result.rows[0]
@@ -34,8 +41,8 @@ export class OrderModel {
 
   async create(order: Order): Promise<Order> {
     const result = await pool.query(
-      `INSERT INTO orders (user_id, status, total_amount, payment_status, payment_method, delivery_type, delivery_address)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
+      `INSERT INTO orders (user_id, status, total_amount, payment_status, payment_method, delivery_type, delivery_address, delivery_latitude, delivery_longitude)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        RETURNING *`,
       [
         order.user_id,
@@ -44,7 +51,9 @@ export class OrderModel {
         order.payment_status || 'PENDING',
         order.payment_method || 'CASH',
         order.delivery_type || 'PICKUP',
-        order.delivery_address || null
+        order.delivery_address || null,
+        order.delivery_latitude ?? null,
+        order.delivery_longitude ?? null
       ]
     )
     return result.rows[0]
@@ -53,8 +62,9 @@ export class OrderModel {
   async update(id: string, order: Order): Promise<Order> {
     const result = await pool.query(
       `UPDATE orders
-       SET user_id = $1, status = $2, payment_status = $3, payment_method = $4, delivery_type = $5, delivery_address = $6, updated_at = NOW()
-       WHERE id = $7
+       SET user_id = $1, status = $2, payment_status = $3, payment_method = $4, delivery_type = $5, delivery_address = $6,
+           delivery_latitude = $7, delivery_longitude = $8, updated_at = NOW()
+       WHERE id = $9
        RETURNING *`,
       [
         order.user_id,
@@ -63,6 +73,8 @@ export class OrderModel {
         order.payment_method || 'CASH',
         order.delivery_type || 'PICKUP',
         order.delivery_address || null,
+        order.delivery_latitude ?? null,
+        order.delivery_longitude ?? null,
         id
       ]
     )
@@ -92,6 +104,17 @@ export class OrderModel {
     } finally {
       client.release()
     }
+  }
+
+  async updateDeliveryProgress(id: string, status?: string, paymentStatus?: string): Promise<Order> {
+    const result = await pool.query(
+      `UPDATE orders
+       SET status = COALESCE($1, status), payment_status = COALESCE($2, payment_status), updated_at = NOW()
+       WHERE id = $3 AND delivery_type = 'DELIVERY'
+       RETURNING *`,
+      [status || null, paymentStatus || null, id]
+    )
+    return result.rows[0]
   }
 
   async cancelByCustomer(id: string, userId: number): Promise<Order | undefined> {
@@ -203,15 +226,17 @@ export class OrderModel {
       })
 
       const order = await client.query(
-        `INSERT INTO orders (user_id, total_amount, status, payment_status, payment_method, delivery_type, delivery_address)
-         VALUES ($1, $2, 'PENDING', 'PENDING', $3, $4, $5)
+        `INSERT INTO orders (user_id, total_amount, status, payment_status, payment_method, delivery_type, delivery_address, delivery_latitude, delivery_longitude)
+         VALUES ($1, $2, 'PENDING', 'PENDING', $3, $4, $5, $6, $7)
          RETURNING *`,
         [
           userId,
           total,
           payload.paymentMethod,
           payload.deliveryType,
-          payload.deliveryType === 'DELIVERY' ? payload.deliveryAddress : null
+          payload.deliveryType === 'DELIVERY' ? payload.deliveryAddress : null,
+          payload.deliveryType === 'DELIVERY' ? payload.deliveryLatitude ?? null : null,
+          payload.deliveryType === 'DELIVERY' ? payload.deliveryLongitude ?? null : null
         ]
       )
 

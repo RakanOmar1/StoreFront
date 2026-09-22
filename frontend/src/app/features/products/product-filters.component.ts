@@ -10,24 +10,35 @@ import { TranslatePipe } from '../../core/i18n/translate.pipe'
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="filters-card">
-      <label>
+      <header class="filter-panel-header">
+        <span class="filter-panel-icon"><i class="pi pi-filter" aria-hidden="true"></i></span>
+        <span><strong>{{ 'store.filters' | t }}</strong><small>{{ 'store.refineResults' | t }}</small></span>
+      </header>
+
+      <label class="filter-section filter-search-section">
         <span class="filter-label">
           <span class="filter-label-copy"><i class="pi pi-search" aria-hidden="true"></i><span>{{ 'common.search' | t }}</span></span>
         </span>
-        <input
-          type="search"
-          autocomplete="off"
-          [ngModel]="searchTerm"
-          (ngModelChange)="searchTermChange.emit($event)"
-          [placeholder]="'store.searchPlaceholder' | t"
-          [attr.aria-label]="'common.search' | t"
-        />
+        <span class="filter-search-field">
+          <i class="pi pi-search" aria-hidden="true"></i>
+          <input
+            type="search"
+            autocomplete="off"
+            [ngModel]="searchTerm"
+            (ngModelChange)="searchTermChange.emit($event)"
+            [placeholder]="'store.searchPlaceholder' | t"
+            [attr.aria-label]="'common.search' | t"
+          />
+          <button *ngIf="searchTerm" type="button" class="clear-search" [attr.aria-label]="'common.clearFilters' | t" (click)="searchTermChange.emit('')">
+            <i class="pi pi-times" aria-hidden="true"></i>
+          </button>
+        </span>
       </label>
 
-      <label>
+      <label class="filter-section filter-price-section">
         <span class="filter-label filter-label--value">
           <span class="filter-label-copy"><i class="pi pi-sliders-h" aria-hidden="true"></i><span>{{ 'store.maxPrice' | t }}</span></span>
-          <b>{{ priceLimit | currency }}</b>
+          <b class="price-value">{{ priceLimit | currency }}</b>
         </span>
         <input
           type="range"
@@ -37,11 +48,16 @@ import { TranslatePipe } from '../../core/i18n/translate.pipe'
           [ngModel]="priceLimit"
           (ngModelChange)="priceLimitChange.emit($event)"
           [attr.aria-label]="'store.maxPrice' | t"
+          [style.background]="rangeBackground"
         />
+        <span class="price-scale"><small>{{ 0 | currency }}</small><small>{{ maxProductPrice | currency }}</small></span>
       </label>
 
-      <div class="filter-category-group">
-        <p class="filter-group-title"><span class="filter-label-copy"><i class="pi pi-th-large" aria-hidden="true"></i><span>{{ 'store.productCategories' | t }}</span></span></p>
+      <div class="filter-category-group filter-section">
+        <p class="filter-group-title">
+          <span class="filter-label-copy"><i class="pi pi-th-large" aria-hidden="true"></i><span>{{ 'store.productCategories' | t }}</span></span>
+          <small>{{ categories.length + 1 }}</small>
+        </p>
         <div class="category-tabs" role="group" [attr.aria-label]="'store.productCategories' | t">
           <button type="button" [class.active]="selectedCategory === 'all'" [attr.aria-pressed]="selectedCategory === 'all'" (click)="categorySelected.emit('all')">
             <span class="category-icon"><i class="pi pi-th-large" aria-hidden="true"></i></span>
@@ -94,6 +110,11 @@ export class ProductFiltersComponent {
   @Output() priceLimitChange = new EventEmitter<number>()
   @Output() categorySelected = new EventEmitter<string>()
   @Output() cleared = new EventEmitter<void>()
+
+  get rangeBackground(): string {
+    const percent = this.maxProductPrice > 0 ? Math.min(100, Math.max(0, (this.priceLimit / this.maxProductPrice) * 100)) : 0
+    return `linear-gradient(to right, #0b765d 0%, #0b765d ${percent}%, #dbe7e2 ${percent}%, #dbe7e2 100%)`
+  }
 
   trackCategory(index: number, category: string): string {
     return category

@@ -1,5 +1,5 @@
 name: seven_stars_mall
-description: "A new Flutter project."
+description: "Stars Mall grocery storefront, delivery, and store operations app."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -46,6 +46,9 @@ dependencies:
   intl: ^0.20.2
   connectivity_plus: ^7.2.0
   image_picker: ^1.2.3
+  flutter_map: ^8.3.2
+  latlong2: ^0.10.1
+  geolocator: ^14.0.3
 
 dev_dependencies:
   flutter_test:
@@ -70,6 +73,12 @@ flutter:
   uses-material-design: true
   assets:
     - assets/translations/
+    - assets/fonts/OFL-Cairo.txt
+
+  fonts:
+    - family: Cairo
+      fonts:
+        - asset: assets/fonts/Cairo-Variable.ttf
 
   # To add assets to your application, add an assets section, like this:
   # assets:

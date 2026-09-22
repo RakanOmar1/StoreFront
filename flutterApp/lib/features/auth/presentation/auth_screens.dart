@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/auth_provider.dart';
+import '../../../shared/location_picker.dart';
+import 'package:latlong2/latlong.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key, this.redirect});
@@ -110,10 +112,14 @@ class _RegisterState extends ConsumerState<RegisterScreen> {
       last = TextEditingController(),
       email = TextEditingController(),
       phone = TextEditingController(),
+      address = TextEditingController(),
+      city = TextEditingController(),
       password = TextEditingController();
+  bool passwordHidden = true;
+  LatLng? selectedPoint;
   @override
   void dispose() {
-    for (final c in [first, last, email, phone, password]) {
+    for (final c in [first, last, email, phone, address, city, password]) {
       c.dispose();
     }
     super.dispose();
@@ -136,8 +142,93 @@ class _RegisterState extends ConsumerState<RegisterScreen> {
               required: false,
               type: TextInputType.emailAddress,
             ),
-            _field(phone, 'phone', required: false, type: TextInputType.phone),
-            _field(password, 'password', password: true),
+            _field(
+              phone,
+              'phone',
+              required: false,
+              type: TextInputType.phone,
+              validator: (_) {
+                if (email.text.trim().isEmpty && phone.text.trim().isEmpty) {
+                  return context.locale.languageCode == 'ar'
+                      ? 'أدخل البريد الإلكتروني أو رقم الهاتف'
+                      : 'Enter an email address or phone number';
+                }
+                return null;
+              },
+            ),
+            Card(
+              margin: const EdgeInsets.only(bottom: 12),
+              color: Theme.of(context).colorScheme.secondaryContainer,
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.location_on_outlined,
+                          color: Color(0xff16803c),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            context.locale.languageCode == 'ar'
+                                ? 'موقع التوصيل'
+                                : 'Delivery location',
+                            style: const TextStyle(fontWeight: FontWeight.w900),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    LocationPickerButton(
+                      onSelected: (location) {
+                        if (location.address.trim().isNotEmpty) {
+                          address.text = location.address;
+                        }
+                        if (location.city.trim().isNotEmpty) {
+                          city.text = location.city;
+                        }
+                        setState(() => selectedPoint = location.point);
+                      },
+                    ),
+                    if (address.text.isNotEmpty) ...[
+                      const SizedBox(height: 9),
+                      Text(
+                        address.text,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+            _field(address, 'streetAddress'),
+            _field(city, 'city'),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: TextFormField(
+                controller: password,
+                obscureText: passwordHidden,
+                decoration: InputDecoration(
+                  labelText: 'password'.tr(),
+                  suffixIcon: IconButton(
+                    onPressed: () =>
+                        setState(() => passwordHidden = !passwordHidden),
+                    icon: Icon(
+                      passwordHidden
+                          ? Icons.visibility_outlined
+                          : Icons.visibility_off_outlined,
+                    ),
+                  ),
+                ),
+                validator: (v) =>
+                    (v?.length ?? 0) < 6 ? 'passwordMin'.tr() : null,
+              ),
+            ),
             if (auth.error != null)
               Text(auth.error!.tr(), style: const TextStyle(color: Colors.red)),
             const SizedBox(height: 16),
@@ -153,6 +244,10 @@ class _RegisterState extends ConsumerState<RegisterScreen> {
                             lastname: last.text,
                             email: email.text,
                             phone: phone.text,
+                            address: address.text,
+                            city: city.text,
+                            latitude: selectedPoint?.latitude,
+                            longitude: selectedPoint?.longitude,
                             password: password.text,
                           );
                       if (ok && context.mounted) {
@@ -176,6 +271,7 @@ class _RegisterState extends ConsumerState<RegisterScreen> {
     bool required = true,
     bool password = false,
     TextInputType? type,
+    String? Function(String?)? validator,
   }) => Padding(
     padding: const EdgeInsets.only(bottom: 12),
     child: TextFormField(
@@ -183,8 +279,11 @@ class _RegisterState extends ConsumerState<RegisterScreen> {
       obscureText: password,
       keyboardType: type,
       decoration: InputDecoration(labelText: label.tr()),
-      validator: (v) =>
-          required && (v?.trim().isEmpty ?? true) ? 'requiredField'.tr() : null,
+      validator:
+          validator ??
+          (v) => required && (v?.trim().isEmpty ?? true)
+              ? 'requiredField'.tr()
+              : null,
     ),
   );
 }

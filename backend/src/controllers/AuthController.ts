@@ -9,7 +9,7 @@ export class AuthController {
   async register(req: Request, res: Response): Promise<void> {
     try {
       if (!validCredentials(req.body)) {
-        res.status(400).json('Firstname, lastname, and password are required')
+        res.status(400).json('Firstname, lastname, a contact method, and a password of at least 6 characters are required')
         return
       }
       const user = await model.create({ ...req.body, role: 'CUSTOMER' })
@@ -41,7 +41,10 @@ export class AuthController {
 }
 
 function validCredentials(input: Record<string, unknown>): boolean {
+  const email = typeof input?.email === 'string' ? input.email.trim() : ''
+  const phone = typeof input?.phone === 'string' ? input.phone.trim() : ''
   return typeof input?.firstname === 'string' && input.firstname.trim().length > 0 &&
     typeof input?.lastname === 'string' && input.lastname.trim().length > 0 &&
-    typeof input?.password === 'string' && input.password.length > 0
+    typeof input?.password === 'string' && input.password.length >= 6 &&
+    (email.length > 0 || phone.length > 0)
 }

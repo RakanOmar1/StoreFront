@@ -7,6 +7,7 @@ import activityLogRoutes from './routes/activityLogRoutes'
 import adminAnalyticsRoutes from './routes/adminAnalyticsRoutes'
 import cartRoutes from './routes/cartRoutes'
 import categoryRoutes from './routes/categoryRoutes'
+import brandRoutes from './routes/brandRoutes'
 import orderRoutes from './routes/orderRoutes'
 import productRoutes from './routes/productRoutes'
 import promotionRoutes from './routes/promotionRoutes'
@@ -20,12 +21,13 @@ const port = Number(process.env.PORT) || 3000
 
 app.disable('x-powered-by')
 app.use(bodyParser.json({ limit: '1mb' }))
-app.use('/uploads', express.static('uploads'))
 
 app.use((req: Request, res: Response, next) => {
   const configuredOrigins = new Set([
     'http://localhost:4200',
     'http://127.0.0.1:4200',
+    'http://localhost:7357',
+    'http://127.0.0.1:7357',
     ...(process.env.CORS_ORIGINS || '')
       .split(',')
       .map(origin => origin.trim())
@@ -50,6 +52,10 @@ app.use((req: Request, res: Response, next) => {
   next()
 })
 
+// Static uploads must pass through the same CORS and security headers as API
+// responses so Flutter web can display customer avatars from the API origin.
+app.use('/uploads', express.static('uploads'))
+
 app.get('/', (req: Request, res: Response) => {
   res.send('Storefront API')
 })
@@ -65,6 +71,7 @@ app.use('/users', userRoutes)
 app.use('/profile', profileRoutes)
 app.use('/products', productRoutes)
 app.use('/categories', categoryRoutes)
+app.use('/brands', brandRoutes)
 app.use('/promotions', promotionRoutes)
 app.use('/cart', cartRoutes)
 app.use('/orders', orderRoutes)
@@ -75,6 +82,7 @@ app.use('/api/users', userRoutes)
 app.use('/api/profile', profileRoutes)
 app.use('/api/products', productRoutes)
 app.use('/api/categories', categoryRoutes)
+app.use('/api/brands', brandRoutes)
 app.use('/api/promotions', promotionRoutes)
 app.use('/api/cart', cartRoutes)
 app.use('/api/orders', orderRoutes)

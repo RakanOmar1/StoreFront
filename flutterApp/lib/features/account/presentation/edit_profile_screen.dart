@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../../shared/location_picker.dart';
+import 'package:latlong2/latlong.dart';
 
 class EditProfileScreen extends ConsumerStatefulWidget {
   const EditProfileScreen({super.key});
@@ -18,6 +20,7 @@ class _EditState extends ConsumerState<EditProfileScreen> {
       address = TextEditingController(),
       city = TextEditingController();
   bool init = false;
+  LatLng? selectedPoint;
   @override
   void dispose() {
     for (final c in [name, phone, address, city]) {
@@ -38,6 +41,9 @@ class _EditState extends ConsumerState<EditProfileScreen> {
       phone.text = u.phone ?? '';
       address.text = u.address ?? '';
       city.text = u.city ?? '';
+      if (u.latitude != null && u.longitude != null) {
+        selectedPoint = LatLng(u.latitude!, u.longitude!);
+      }
     }
     return Scaffold(
       appBar: AppBar(title: Text('editProfile'.tr())),
@@ -78,6 +84,25 @@ class _EditState extends ConsumerState<EditProfileScreen> {
             ),
             const SizedBox(height: 12),
             _field(phone, 'phone'),
+            Card(
+              margin: const EdgeInsets.only(bottom: 12),
+              color: Theme.of(context).colorScheme.secondaryContainer,
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: LocationPickerButton(
+                  initialPoint: selectedPoint,
+                  onSelected: (location) {
+                    if (location.address.trim().isNotEmpty) {
+                      address.text = location.address;
+                    }
+                    if (location.city.trim().isNotEmpty) {
+                      city.text = location.city;
+                    }
+                    setState(() => selectedPoint = location.point);
+                  },
+                ),
+              ),
+            ),
             _field(address, 'streetAddress'),
             _field(city, 'city'),
             if (auth.error != null)
@@ -116,6 +141,8 @@ class _EditState extends ConsumerState<EditProfileScreen> {
           phone: phone.text,
           address: address.text,
           city: city.text,
+          latitude: selectedPoint?.latitude,
+          longitude: selectedPoint?.longitude,
         );
     if (ok && mounted) {
       ScaffoldMessenger.of(

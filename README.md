@@ -66,6 +66,17 @@ The backend is a Node/Express API located in the `backend` directory.
 - Development database name: `storefront`
 - Test database name: `storefront_test`
 
+### Local Admin Account
+
+Use this administrator account for local development only:
+
+| Field | Value |
+| --- | --- |
+| Login | `admin@solestreet.local` |
+| Password | `StarsMall7!Admin#2026` |
+
+Do not reuse these credentials in staging or production. Configure deployment credentials through environment variables or a secret manager.
+
 ## Prerequisites
 
 - Node.js and npm
@@ -333,6 +344,82 @@ The Angular production build is written to:
 
 ```text
 frontend/dist/frontend
+```
+
+### Flutter App: Run and Build APK
+
+#### Android prerequisite
+
+Building an APK requires Android Studio (or the Android command-line SDK), an
+installed Android SDK, and accepted Android licenses. Verify the toolchain with:
+
+```powershell
+& "C:\Users\USER\Desktop\Super\.tools\flutter\bin\flutter.bat" doctor -v
+```
+
+If the SDK is installed in a custom directory, configure Flutter and accept the
+licenses before building:
+
+```powershell
+& "C:\Users\USER\Desktop\Super\.tools\flutter\bin\flutter.bat" config --android-sdk "C:\path\to\Android\Sdk"
+& "C:\Users\USER\Desktop\Super\.tools\flutter\bin\flutter.bat" doctor --android-licenses
+```
+
+Open PowerShell in the Flutter application directory:
+
+```powershell
+cd C:\Users\USER\Desktop\StoreFront\StoreFront\flutterApp
+```
+
+Build a release APK:
+
+```powershell
+& "C:\Users\USER\Desktop\Super\.tools\flutter\bin\flutter.bat" build apk --release
+```
+
+The default Android API address is `http://10.0.2.2:3000`, which reaches the
+host machine from the Android emulator. For a physical phone, build with the
+backend computer's LAN address (the phone and computer must be on the same
+network):
+
+```powershell
+& "C:\Users\USER\Desktop\Super\.tools\flutter\bin\flutter.bat" build apk --release
+```
+
+The generated APK is written to:
+
+```text
+flutterApp\build\app\outputs\flutter-apk\app-release.apk
+```
+
+Run the Flutter web application in Chrome on port `7357`:
+
+```powershell
+& "C:\Users\USER\Desktop\Super\.tools\flutter\bin\flutter.bat" run -d chrome --web-port 7357
+```
+
+Then open:
+
+```text
+http://localhost:7357/#/home
+```
+
+To run the application on an Android phone or emulator, first list the available devices:
+
+```powershell
+& "C:\Users\USER\Desktop\Super\.tools\flutter\bin\flutter.bat" devices
+```
+
+Then replace `DEVICE_ID` with the Android device identifier:
+
+```powershell
+& "C:\Users\USER\Desktop\Super\.tools\flutter\bin\flutter.bat" run -d DEVICE_ID
+```
+
+For a physical phone, also provide the backend computer's LAN address:
+
+```powershell
+& "C:\Users\USER\Desktop\Super\.tools\flutter\bin\flutter.bat" run -d DEVICE_ID --release
 ```
 
 ## Testing

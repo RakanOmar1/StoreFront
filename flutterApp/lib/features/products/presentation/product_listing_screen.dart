@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../shared/models/product.dart';
 import '../../../shared/providers.dart';
@@ -72,7 +73,7 @@ class _ProductListingState extends ConsumerState<ProductListingScreen> {
     } catch (_) {
       if (mounted) {
         setState(() {
-          error = 'Could not load products';
+          error = 'loadError';
           loading = false;
         });
       }
@@ -91,16 +92,22 @@ class _ProductListingState extends ConsumerState<ProductListingScreen> {
     body: RefreshIndicator(
       onRefresh: () => _load(true),
       child: error != null && items.isEmpty
-          ? _state(Icons.cloud_off, error!, () => _load(true))
+          ? _state(Icons.cloud_off, error!.tr(), () => _load(true))
           : items.isEmpty && !loading
-          ? _state(Icons.inventory_2_outlined, 'No products found', null)
+          ? _state(
+              Icons.inventory_2_outlined,
+              context.locale.languageCode == 'ar'
+                  ? 'لم يتم العثور على منتجات'
+                  : 'No products found',
+              null,
+            )
           : GridView.builder(
               controller: scroll,
               padding: const EdgeInsets.fromLTRB(12, 12, 12, 100),
               itemCount: items.length + (loading ? 2 : 0),
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 2,
-                mainAxisExtent: 272,
+                mainAxisExtent: 328,
                 crossAxisSpacing: 8,
                 mainAxisSpacing: 8,
               ),
@@ -123,7 +130,7 @@ class _ProductListingState extends ConsumerState<ProductListingScreen> {
             const SizedBox(height: 12),
             Text(message),
             if (retry != null)
-              TextButton(onPressed: retry, child: const Text('Retry')),
+              TextButton(onPressed: retry, child: Text('retry'.tr())),
           ],
         ),
       ),

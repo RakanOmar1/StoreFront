@@ -16,10 +16,13 @@ import 'features/checkout/presentation/order_confirmation_screen.dart';
 import 'features/checkout/models/checkout_models.dart';
 import 'features/auth/presentation/auth_screens.dart';
 import 'features/auth/presentation/account_screen.dart';
+import 'features/auth/providers/auth_provider.dart';
 import 'features/account/providers/theme_provider.dart';
 import 'features/account/presentation/edit_profile_screen.dart';
 import 'features/account/presentation/change_password_screen.dart';
-import 'features/account/presentation/account_placeholder_screen.dart';
+import 'features/wishlist/presentation/wishlist_screen.dart';
+import 'features/orders/presentation/my_orders_screen.dart';
+import 'features/operations/presentation/operations_screen.dart';
 
 final _router = GoRouter(
   initialLocation: '/home',
@@ -66,10 +69,12 @@ final _router = GoRouter(
     ),
     GoRoute(
       path: '/search/results',
-      builder: (_, state) {
+      builder: (context, state) {
         final query = state.uri.queryParameters['q'] ?? '';
         return ProductListingScreen(
-          title: 'Results for “$query”',
+          title: context.locale.languageCode == 'ar'
+              ? 'نتائج البحث عن “$query”'
+              : 'Results for “$query”',
           search: query,
         );
       },
@@ -78,6 +83,14 @@ final _router = GoRouter(
       path: '/products/:id',
       builder: (_, state) =>
           ProductDetailsScreen(id: int.parse(state.pathParameters['id']!)),
+    ),
+    GoRoute(
+      path: '/products',
+      builder: (context, _) => ProductListingScreen(
+        title: context.locale.languageCode == 'ar'
+            ? 'كل المنتجات'
+            : 'All products',
+      ),
     ),
     GoRoute(path: '/checkout', builder: (_, _) => const CheckoutScreen()),
     GoRoute(
@@ -97,22 +110,61 @@ final _router = GoRouter(
     ),
     GoRoute(
       path: '/account/edit-profile',
-      builder: (_, _) => const EditProfileScreen(),
+      builder: (_, _) => const _AuthenticatedRoute(
+        location: '/account/edit-profile',
+        child: EditProfileScreen(),
+      ),
     ),
     GoRoute(
       path: '/account/change-password',
-      builder: (_, _) => const ChangePasswordScreen(),
+      builder: (_, _) => const _AuthenticatedRoute(
+        location: '/account/change-password',
+        child: ChangePasswordScreen(),
+      ),
     ),
     GoRoute(
       path: '/account/orders',
-      builder: (_, _) => const AccountPlaceholderScreen(title: 'myOrders'),
+      builder: (_, _) => const _AuthenticatedRoute(
+        location: '/account/orders',
+        child: MyOrdersScreen(),
+      ),
     ),
     GoRoute(
       path: '/account/wishlist',
-      builder: (_, _) => const AccountPlaceholderScreen(title: 'wishlist'),
+      builder: (_, _) => const _AuthenticatedRoute(
+        location: '/account/wishlist',
+        child: WishlistScreen(),
+      ),
     ),
+    GoRoute(path: '/operations', builder: (_, _) => const OperationsScreen()),
   ],
 );
+
+class _AuthenticatedRoute extends ConsumerWidget {
+  const _AuthenticatedRoute({required this.location, required this.child});
+
+  final String location;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final auth = ref.watch(authProvider);
+    if (auth.loading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    if (!auth.authenticated) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (context.mounted) {
+          context.go(
+            '/auth/login?redirect=${Uri.encodeQueryComponent(location)}',
+          );
+        }
+      });
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    return child;
+  }
+}
 
 class SevenStarsApp extends ConsumerWidget {
   const SevenStarsApp({super.key});
@@ -120,8 +172,8 @@ class SevenStarsApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) => MaterialApp.router(
     debugShowCheckedModeBanner: false,
     title: '7 Stars Mall',
-    theme: buildTheme(),
-    darkTheme: buildDarkTheme(),
+    theme: buildTheme(arabic: context.locale.languageCode == 'ar'),
+    darkTheme: buildDarkTheme(arabic: context.locale.languageCode == 'ar'),
     themeMode: switch (ref.watch(themeProvider)) {
       AppThemePreference.light => ThemeMode.light,
       AppThemePreference.dark => ThemeMode.dark,

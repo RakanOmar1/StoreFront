@@ -2,9 +2,10 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../models/product.dart';
 import '../providers.dart';
+import '../../features/wishlist/providers/wishlist_provider.dart';
 
 class AppProductCard extends ConsumerWidget {
   const AppProductCard({super.key, required this.product});
@@ -12,66 +13,82 @@ class AppProductCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final qty = ref.watch(cartProvider).items[product.id]?.quantity ?? 0;
+    final favorite = ref.watch(wishlistProvider).contains(product.id);
     final money = NumberFormat.simpleCurrency(name: 'ILS');
     return SizedBox(
       width: 190,
-      height: 272,
+      height: 328,
       child: Card(
-        elevation: 1.5,
-        shadowColor: const Color(0x16071d3a),
+        elevation: 2,
+        shadowColor: const Color(0x22071d3a),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
-          side: const BorderSide(color: Color(0xffe7ece9)),
+          side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
         ),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: () => context.push('/products/${product.id}'),
           child: Padding(
-            padding: const EdgeInsets.all(10),
+            padding: const EdgeInsets.all(9),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 SizedBox(
-                  height: 118,
+                  height: 148,
                   width: double.infinity,
                   child: DecoratedBox(
                     decoration: BoxDecoration(
-                      color: const Color(0xfff1f5f2),
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.surfaceContainerHighest,
                       borderRadius: BorderRadius.circular(15),
                     ),
                     child: Stack(
                       children: [
                         Positioned.fill(
                           child: product.image.isEmpty
-                              ? const ColoredBox(
-                                  color: Color(0xffeef3ef),
+                              ? ColoredBox(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.surfaceContainerHighest,
                                   child: Icon(
                                     Icons.shopping_bag_outlined,
                                     size: 54,
                                   ),
                                 )
-                              : Padding(
-                                  padding: const EdgeInsets.all(8),
+                              : ClipRRect(
+                                  borderRadius: BorderRadius.circular(15),
                                   child: CachedNetworkImage(
+                                    width: double.infinity,
+                                    height: double.infinity,
                                     imageUrl: product.image,
-                                    fit: BoxFit.contain,
-                                    placeholder: (_, _) => const ColoredBox(
-                                      color: Color(0xffeef3ef),
+                                    fit: BoxFit.cover,
+                                    placeholder: (_, _) => ColoredBox(
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.surfaceContainerHighest,
                                     ),
-                                    errorWidget: (_, _, _) => const Icon(
-                                      Icons.image_not_supported_outlined,
+                                    errorWidget: (_, _, _) => ColoredBox(
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.surfaceContainerHighest,
+                                      child: Icon(
+                                        Icons.image_not_supported_outlined,
+                                      ),
                                     ),
                                   ),
                                 ),
                         ),
                         if (product.discounted)
-                          const Positioned(
+                          Positioned(
                             top: 6,
                             left: 6,
                             child: Chip(
                               label: Text(
-                                'DEAL',
-                                style: TextStyle(
+                                context.locale.languageCode == 'ar'
+                                    ? 'عرض'
+                                    : 'DEAL',
+                                style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 10,
                                 ),
@@ -81,33 +98,75 @@ class AppProductCard extends ConsumerWidget {
                               visualDensity: VisualDensity.compact,
                             ),
                           ),
+                        Positioned(
+                          top: 6,
+                          right: 6,
+                          child: IconButton.filledTonal(
+                            tooltip: favorite
+                                ? (context.locale.languageCode == 'ar'
+                                      ? 'إزالة من المفضلة'
+                                      : 'Remove from favorites')
+                                : (context.locale.languageCode == 'ar'
+                                      ? 'إضافة إلى المفضلة'
+                                      : 'Add to favorites'),
+                            onPressed: () => ref
+                                .read(wishlistProvider.notifier)
+                                .toggle(product.id),
+                            style: IconButton.styleFrom(
+                              backgroundColor: Colors.white.withValues(
+                                alpha: .92,
+                              ),
+                              foregroundColor: const Color(0xff52675b),
+                              minimumSize: const Size(34, 34),
+                              padding: EdgeInsets.zero,
+                            ),
+                            icon: Icon(
+                              favorite ? Icons.favorite : Icons.favorite_border,
+                              size: 18,
+                              color: favorite ? Colors.red : null,
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ),
                 ),
-                const SizedBox(height: 11),
-                Text(
-                  product.category,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: Colors.grey[600],
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: .35,
+                const SizedBox(height: 10),
+                Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.secondaryContainer,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      product.category,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.primary,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
                   ),
                 ),
+                const SizedBox(height: 6),
                 Text(
                   product.name,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     fontWeight: FontWeight.w800,
-                    fontSize: 14.5,
-                    height: 1.18,
+                    fontSize: 15,
+                    height: 1.15,
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 6),
                 const Spacer(),
                 if (product.discounted)
                   Text(
@@ -118,11 +177,7 @@ class AppProductCard extends ConsumerWidget {
                       fontSize: 12,
                     ),
                   ),
-                Container(
-                  height: 1,
-                  margin: const EdgeInsets.only(bottom: 7),
-                  color: const Color(0xffedf1ef),
-                ),
+                const Divider(height: 10),
                 Row(
                   children: [
                     Expanded(
@@ -130,27 +185,34 @@ class AppProductCard extends ConsumerWidget {
                         money.format(product.finalPrice),
                         style: const TextStyle(
                           fontWeight: FontWeight.w900,
-                          fontSize: 17,
+                          fontSize: 16,
                           letterSpacing: -.2,
                         ),
                       ),
                     ),
                     if (qty == 0)
                       IconButton.filled(
-                        tooltip: 'View product',
+                        tooltip: context.locale.languageCode == 'ar'
+                            ? 'أضف إلى السلة'
+                            : 'Add to cart',
                         onPressed: () =>
-                            context.push('/products/${product.id}'),
+                            ref.read(cartProvider.notifier).add(product),
                         style: IconButton.styleFrom(
                           minimumSize: const Size(40, 40),
                           backgroundColor: const Color(0xff16803c),
                           foregroundColor: Colors.white,
                         ),
-                        icon: const Icon(Icons.arrow_forward_rounded, size: 19),
+                        icon: const Icon(
+                          Icons.add_shopping_cart_rounded,
+                          size: 19,
+                        ),
                       )
                     else
                       Container(
                         decoration: BoxDecoration(
-                          color: const Color(0xffeaf6ee),
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.secondaryContainer,
                           borderRadius: BorderRadius.circular(18),
                         ),
                         child: Row(
@@ -158,7 +220,9 @@ class AppProductCard extends ConsumerWidget {
                           children: [
                             _quantityButton(
                               icon: Icons.remove,
-                              label: 'Decrease quantity',
+                              label: context.locale.languageCode == 'ar'
+                                  ? 'تقليل الكمية'
+                                  : 'Decrease quantity',
                               onPressed: () => ref
                                   .read(cartProvider.notifier)
                                   .decrement(product.id),
@@ -168,15 +232,17 @@ class AppProductCard extends ConsumerWidget {
                               child: Text(
                                 '$qty',
                                 textAlign: TextAlign.center,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontWeight: FontWeight.w900,
-                                  color: Color(0xff16803c),
+                                  color: Theme.of(context).colorScheme.primary,
                                 ),
                               ),
                             ),
                             _quantityButton(
                               icon: Icons.add,
-                              label: 'Increase quantity',
+                              label: context.locale.languageCode == 'ar'
+                                  ? 'زيادة الكمية'
+                                  : 'Increase quantity',
                               onPressed: () =>
                                   ref.read(cartProvider.notifier).add(product),
                             ),

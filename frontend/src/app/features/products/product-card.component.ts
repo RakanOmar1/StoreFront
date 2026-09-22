@@ -39,7 +39,10 @@ import { TranslatePipe } from '../../core/i18n/translate.pipe'
 
       <div class="product-info">
         <div class="product-meta-row">
-          <p class="product-category">{{ product.category || ('store.supermarket' | t) }}</p>
+          <span class="product-tags">
+            <p class="product-category">{{ product.category || ('store.supermarket' | t) }}</p>
+            <span *ngIf="product.brand" class="product-brand-tag"><i class="pi pi-bookmark" aria-hidden="true"></i>{{ product.brand }}</span>
+          </span>
           <span class="product-rating" aria-label="Rated 4.8 out of 5">&#9733; 4.8</span>
         </div>
         <h2><a [routerLink]="['/products', product.id]">{{ product.name }}</a></h2>
@@ -73,6 +76,9 @@ import { TranslatePipe } from '../../core/i18n/translate.pipe'
     button:focus-visible,
     .product-qty-badge:focus-visible { outline: 3px solid var(--focus-ring, #f59e0b); outline-offset: 3px; }
     .product-info, .product-meta-row, .product-footer { min-width: 0; }
+    .product-tags { align-items:center; display:flex; flex-wrap:wrap; gap:5px; min-width:0; }
+    .product-brand-tag { align-items:center; background:#fff3df; border:1px solid #f1d8ad; border-radius:999px; color:#86500c; display:inline-flex; font-size:.58rem; font-weight:800; gap:3px; max-width:100%; overflow:hidden; padding:3px 6px; text-overflow:ellipsis; white-space:nowrap; }
+    .product-brand-tag i { font-size:.55rem; }
     h2, .product-description, .product-category { overflow-wrap: anywhere; }
     .add-cart-button.added { background: #166534; transform: scale(.96); }
     @media (max-width: 479px) {

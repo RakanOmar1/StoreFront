@@ -7,10 +7,14 @@ class CheckoutRequest {
     required this.paymentMethod,
     required this.deliveryType,
     this.deliveryAddress,
+    this.deliveryLatitude,
+    this.deliveryLongitude,
   });
   final PaymentMethod paymentMethod;
   final DeliveryType deliveryType;
   final String? deliveryAddress;
+  final double? deliveryLatitude;
+  final double? deliveryLongitude;
   Map<String, dynamic> toJson() => {
     'paymentMethod': paymentMethod == PaymentMethod.cash ? 'CASH' : 'ONLINE',
     'deliveryType': deliveryType == DeliveryType.delivery
@@ -18,6 +22,10 @@ class CheckoutRequest {
         : 'PICKUP',
     if (deliveryType == DeliveryType.delivery)
       'deliveryAddress': deliveryAddress,
+    if (deliveryType == DeliveryType.delivery && deliveryLatitude != null)
+      'deliveryLatitude': deliveryLatitude,
+    if (deliveryType == DeliveryType.delivery && deliveryLongitude != null)
+      'deliveryLongitude': deliveryLongitude,
   };
 }
 

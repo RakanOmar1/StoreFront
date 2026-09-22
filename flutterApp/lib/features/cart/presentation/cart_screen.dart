@@ -94,10 +94,10 @@ class CartScreen extends ConsumerWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const CircleAvatar(
+          CircleAvatar(
             radius: 46,
-            backgroundColor: Color(0xffeaf6ee),
-            child: Icon(
+            backgroundColor: Theme.of(c).colorScheme.secondaryContainer,
+            child: const Icon(
               Icons.shopping_cart_outlined,
               size: 48,
               color: AppColors.green,
@@ -157,8 +157,10 @@ class AppCartItem extends ConsumerWidget {
                 width: 84,
                 height: 96,
                 child: p.image.isEmpty
-                    ? const ColoredBox(
-                        color: Color(0xffeef3ef),
+                    ? ColoredBox(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.surfaceContainerHighest,
                         child: Icon(Icons.image_outlined),
                       )
                     : CachedNetworkImage(
@@ -208,6 +210,7 @@ class AppCartItem extends ConsumerWidget {
                   Row(
                     children: [
                       _step(
+                        context,
                         Icons.remove,
                         disabled
                             ? null
@@ -223,6 +226,7 @@ class AppCartItem extends ConsumerWidget {
                         ),
                       ),
                       _step(
+                        context,
                         Icons.add,
                         disabled
                             ? null
@@ -249,14 +253,14 @@ class AppCartItem extends ConsumerWidget {
     );
   }
 
-  Widget _step(IconData i, VoidCallback? on) => InkWell(
+  Widget _step(BuildContext context, IconData i, VoidCallback? on) => InkWell(
     onTap: on,
     borderRadius: BorderRadius.circular(20),
     child: Container(
       width: 34,
       height: 34,
       decoration: BoxDecoration(
-        color: const Color(0xffeaf6ee),
+        color: Theme.of(context).colorScheme.secondaryContainer,
         borderRadius: BorderRadius.circular(20),
       ),
       child: Icon(i, size: 17, color: AppColors.green),
@@ -359,9 +363,11 @@ class CartCheckoutBar extends StatelessWidget {
     return SafeArea(
       top: false,
       child: Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          boxShadow: [BoxShadow(color: Color(0x18000000), blurRadius: 16)],
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface,
+          boxShadow: const [
+            BoxShadow(color: Color(0x18000000), blurRadius: 16),
+          ],
         ),
         padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
         child: Row(

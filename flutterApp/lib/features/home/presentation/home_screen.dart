@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/providers.dart';
 import '../../../shared/widgets/product_card.dart';
+import '../../account/providers/theme_provider.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -42,6 +43,30 @@ class HomeScreen extends ConsumerWidget {
             ),
             actions: [
               IconButton(
+                tooltip: context.locale.languageCode == 'ar'
+                    ? (Theme.of(context).brightness == Brightness.dark
+                          ? 'الوضع الفاتح'
+                          : 'الوضع الداكن')
+                    : (Theme.of(context).brightness == Brightness.dark
+                          ? 'Light mode'
+                          : 'Dark mode'),
+                onPressed: () {
+                  final dark = Theme.of(context).brightness == Brightness.dark;
+                  ref
+                      .read(themeProvider.notifier)
+                      .set(
+                        dark
+                            ? AppThemePreference.light
+                            : AppThemePreference.dark,
+                      );
+                },
+                icon: Icon(
+                  Theme.of(context).brightness == Brightness.dark
+                      ? Icons.light_mode_outlined
+                      : Icons.dark_mode_outlined,
+                ),
+              ),
+              IconButton(
                 onPressed: () {
                   context.setLocale(
                     context.locale.languageCode == 'ar'
@@ -50,10 +75,6 @@ class HomeScreen extends ConsumerWidget {
                   );
                 },
                 icon: const Icon(Icons.language),
-              ),
-              IconButton(
-                onPressed: () {},
-                icon: const Icon(Icons.notifications_none),
               ),
             ],
           ),
@@ -89,20 +110,32 @@ class HomeScreen extends ConsumerWidget {
                   items: [
                     _banner(
                       context,
-                      'Fresh groceries',
-                      'Everyday value',
+                      context.locale.languageCode == 'ar'
+                          ? 'منتجات طازجة'
+                          : 'Fresh groceries',
+                      context.locale.languageCode == 'ar'
+                          ? 'قيمة يومية أفضل'
+                          : 'Everyday value',
                       AppColors.green,
                     ),
                     _banner(
                       context,
-                      'Weekend deals',
-                      'Save on mall picks',
+                      context.locale.languageCode == 'ar'
+                          ? 'عروض نهاية الأسبوع'
+                          : 'Weekend deals',
+                      context.locale.languageCode == 'ar'
+                          ? 'وفّر على مختارات المول'
+                          : 'Save on mall picks',
                       AppColors.navy,
                     ),
                     _banner(
                       context,
-                      'Fast delivery',
-                      'Right to your door',
+                      context.locale.languageCode == 'ar'
+                          ? 'توصيل سريع'
+                          : 'Fast delivery',
+                      context.locale.languageCode == 'ar'
+                          ? 'حتى باب منزلك'
+                          : 'Right to your door',
                       AppColors.orange,
                     ),
                   ],
@@ -111,11 +144,12 @@ class HomeScreen extends ConsumerWidget {
                     autoPlay: animationsEnabled,
                     autoPlayInterval: const Duration(seconds: 5),
                     viewportFraction: 1,
-                    enableInfiniteScroll: true,
+                    padEnds: false,
+                    enableInfiniteScroll: false,
                   ),
                 ),
                 const SizedBox(height: 24),
-                _title('categories'.tr()),
+                _title('categories'.tr(), () => context.go('/categories')),
                 const SizedBox(height: 12),
                 SizedBox(
                   height: 90,
@@ -125,7 +159,7 @@ class HomeScreen extends ConsumerWidget {
                     error: (_, _) => Center(
                       child: TextButton(
                         onPressed: () => ref.invalidate(categoriesProvider),
-                        child: const Text('Retry'),
+                        child: Text('retry'.tr()),
                       ),
                     ),
                     data: (values) => ListView(
@@ -146,7 +180,9 @@ class HomeScreen extends ConsumerWidget {
                                   children: [
                                     CircleAvatar(
                                       radius: 28,
-                                      backgroundColor: const Color(0xffeaf6ee),
+                                      backgroundColor: Theme.of(
+                                        context,
+                                      ).colorScheme.secondaryContainer,
                                       child: Icon(
                                         _icon(category.name),
                                         color: AppColors.green,
@@ -172,7 +208,7 @@ class HomeScreen extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: 22),
-                _title('mallPicks'.tr()),
+                _title('mallPicks'.tr(), () => context.push('/products')),
                 const SizedBox(height: 12),
                 products.when(
                   loading: () => const SizedBox(
@@ -181,9 +217,15 @@ class HomeScreen extends ConsumerWidget {
                   ),
                   error: (e, _) => _error(ref),
                   data: (p) => p.isEmpty
-                      ? const SizedBox(
+                      ? SizedBox(
                           height: 180,
-                          child: Center(child: Text('No products available')),
+                          child: Center(
+                            child: Text(
+                              context.locale.languageCode == 'ar'
+                                  ? 'لا توجد منتجات متاحة'
+                                  : 'No products available',
+                            ),
+                          ),
                         )
                       : CarouselSlider(
                           items: p
@@ -191,17 +233,17 @@ class HomeScreen extends ConsumerWidget {
                               .map((x) => AppProductCard(product: x))
                               .toList(),
                           options: CarouselOptions(
-                            height: 282,
+                            height: 334,
                             viewportFraction: .58,
                             padEnds: false,
                             autoPlay: animationsEnabled && p.length > 1,
                             autoPlayInterval: const Duration(seconds: 4),
-                            enableInfiniteScroll: p.length > 2,
+                            enableInfiniteScroll: false,
                           ),
                         ),
                 ),
                 const SizedBox(height: 24),
-                _title('popular'.tr()),
+                _title('popular'.tr(), () => context.push('/products')),
                 const SizedBox(height: 12),
                 products.when(
                   loading: () => const LinearProgressIndicator(),
@@ -213,7 +255,7 @@ class HomeScreen extends ConsumerWidget {
                     gridDelegate:
                         const SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount: 2,
-                          mainAxisExtent: 272,
+                          mainAxisExtent: 328,
                           crossAxisSpacing: 8,
                           mainAxisSpacing: 8,
                         ),
@@ -228,14 +270,14 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  static Widget _title(String t) => Row(
+  static Widget _title(String t, VoidCallback onSeeAll) => Row(
     mainAxisAlignment: MainAxisAlignment.spaceBetween,
     children: [
       Text(
         t,
         style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w900),
       ),
-      TextButton(onPressed: () {}, child: Text('seeAll'.tr())),
+      TextButton(onPressed: onSeeAll, child: Text('seeAll'.tr())),
     ],
   );
   static Widget _banner(
@@ -244,6 +286,7 @@ class HomeScreen extends ConsumerWidget {
     String sub,
     Color color,
   ) => Container(
+    width: double.infinity,
     decoration: BoxDecoration(
       gradient: LinearGradient(colors: [color, color.withValues(alpha: .76)]),
       borderRadius: BorderRadius.circular(22),
@@ -264,7 +307,7 @@ class HomeScreen extends ConsumerWidget {
         Text(sub, style: const TextStyle(color: Colors.white70)),
         const SizedBox(height: 14),
         FilledButton(
-          onPressed: () {},
+          onPressed: () => c.push('/products'),
           style: FilledButton.styleFrom(
             backgroundColor: Colors.white,
             foregroundColor: color,

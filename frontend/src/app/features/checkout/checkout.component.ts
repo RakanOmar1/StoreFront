@@ -185,8 +185,13 @@ export class CheckoutComponent {
   error: string | null = null
   locationPickerOpen = false
   locatingAddress = false
-  locationPickerPoint: MapPoint = { lat: 31.9038, lng: 35.2034 }
   private user = this.auth.getCurrentUser()
+  locationPickerPoint: MapPoint = this.user?.latitude != null && this.user?.longitude != null
+    ? { lat: this.user.latitude, lng: this.user.longitude }
+    : { lat: 31.9038, lng: 35.2034 }
+  selectedOrderPoint: MapPoint | null = this.user?.latitude != null && this.user?.longitude != null
+    ? { lat: this.user.latitude, lng: this.user.longitude }
+    : null
   private readonly destroy$ = new Subject<void>()
 
   f = this.fb.group({
@@ -259,6 +264,7 @@ export class CheckoutComponent {
     this.f.controls.address.markAsTouched()
     this.f.controls.city.markAsTouched()
     this.locationPickerPoint = { lat: location.lat, lng: location.lng }
+    this.selectedOrderPoint = { lat: location.lat, lng: location.lng }
     this.locationPickerOpen = false
   }
 
@@ -345,7 +351,9 @@ export class CheckoutComponent {
       deliveryType: customer.deliveryType || 'DELIVERY',
       deliveryAddress: customer.deliveryType === 'DELIVERY'
         ? `${customer.address}, ${customer.city}`
-        : undefined
+        : undefined,
+      deliveryLatitude: customer.deliveryType === 'DELIVERY' ? this.selectedOrderPoint?.lat : undefined,
+      deliveryLongitude: customer.deliveryType === 'DELIVERY' ? this.selectedOrderPoint?.lng : undefined
     }
 
     this.cart.syncToBackend().pipe(

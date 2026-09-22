@@ -2,6 +2,7 @@ import { Request, Response } from 'express'
 import { OrderModel } from '../models/OrderModel'
 import { ActivityLogService } from '../services/ActivityLogService'
 import { isPrivileged } from '../middleware/authorizeResourceOwner'
+import { isOrderStaff } from '../middleware/requireOrderStaff'
 
 const model = new OrderModel()
 const activity = new ActivityLogService()
@@ -10,7 +11,12 @@ type AuthRequest = Request & { user?: { id?: number; role?: string } }
 export class OrderController {
   async index(req: AuthRequest, res: Response): Promise<void> {
     try {
-      res.json(isPrivileged(req) ? await model.index() : await model.indexByUser(req.user?.id as number))
+      const orders = req.user?.role === 'DELIVERY'
+        ? await model.indexDeliveries()
+        : isOrderStaff(req)
+          ? await model.index()
+          : await model.indexByUser(req.user?.id as number)
+      res.json(orders)
     } catch (error) {
       res.status(500).json('Could not get orders')
     }
@@ -23,7 +29,7 @@ export class OrderController {
         res.status(404).json('Order not found')
         return
       }
-      if (!isPrivileged(req) && Number(order.user_id) !== req.user?.id) {
+      if (!isOrderStaff(req) && Number(order.user_id) !== req.user?.id) {
         res.status(403).json('You do not have access to this order')
         return
       }
@@ -90,6 +96,33 @@ export class OrderController {
       res.status(201).json(product)
     } catch (error) {
       res.status(400).json('Could not add product')
+    }
+  }
+
+  async updateDelivery(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const status = req.body.status as string | undefined
+      const paymentStatus = req.body.payment_status as string | undefined
+      const allowedStatuses = ['CONFIRMED', 'PREPARING', 'OUT_FOR_DELIVERY', 'DELIVERED']
+      const allowedPaymentStatuses = ['PENDING', 'PAID']
+      if ((status && !allowedStatuses.includes(status)) || (paymentStatus && !allowedPaymentStatuses.includes(paymentStatus))) {
+        res.status(400).json('Invalid delivery or payment status')
+        return
+      }
+      if (!status && !paymentStatus) {
+        res.status(400).json('A delivery or payment status is required')
+        return
+      }
+      const before = await model.show(req.params.id)
+      if (!before) {
+        res.status(404).json('Order not found')
+        return
+      }
+      const order = await model.updateDeliveryProgress(req.params.id, status, paymentStatus)
+      await activity.logUpdate('ORDER', req.params.id, req.user, before as Record<string, unknown>, order as Record<string, unknown>)
+      res.json(order)
+    } catch {
+      res.status(400).json('Could not update delivery order')
     }
   }
 
@@ -162,6 +195,11 @@ export class OrderController {
         res.status(400).json('Invalid payment method or delivery type')
         return
       }
+      if (req.body.deliveryType === 'DELIVERY' &&
+          (!validLatitude(req.body.deliveryLatitude) || !validLongitude(req.body.deliveryLongitude))) {
+        res.status(400).json('A precise delivery location is required')
+        return
+      }
       const result = await model.checkout(req.user?.id as number, req.body)
       await activity.logCreate('ORDER', result.order.id as number, req.user, result.order as Record<string, unknown>)
       res.status(201).json(result)
@@ -169,4 +207,14 @@ export class OrderController {
       res.status(400).json('Could not checkout order')
     }
   }
+}
+
+function validLatitude(value: unknown): boolean {
+  const coordinate = Number(value)
+  return Number.isFinite(coordinate) && coordinate >= -90 && coordinate <= 90
+}
+
+function validLongitude(value: unknown): boolean {
+  const coordinate = Number(value)
+  return Number.isFinite(coordinate) && coordinate >= -180 && coordinate <= 180
 }

@@ -359,6 +359,7 @@ export class ProductDetailsComponent {
   }
 
   get brandName(): string {
+    if (this.product?.brand) return this.product.brand
     const name = this.product?.name || ''
     return ['Farm Select', 'Daily Pantry', 'Fresh Valley', 'Pure Dairy', 'Bakery House', 'Clean Home']
       .find(brand => name.toLowerCase().includes(brand.toLowerCase())) || '7 Stars Fresh'

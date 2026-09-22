@@ -8,7 +8,7 @@ import { DropdownModule } from 'primeng/dropdown'
 import { CanLeaveWithUnsavedChanges } from '../../core/guards/unsaved-changes.guard'
 import { AdminDataService } from '../../core/services/admin-data.service'
 import { SelectOption } from '../../shared/interfaces/select-option'
-import { Category, Product } from '../../shared/interfaces/product'
+import { Brand, Category, Product } from '../../shared/interfaces/product'
 import { AdminChatterComponent } from './admin-chatter.component'
 import { AdminConfirmationDialogComponent } from './admin-confirmation-dialog.component'
 import { AdminSidebarComponent } from './admin-sidebar.component'
@@ -16,7 +16,7 @@ import { AdminPageHeaderComponent, AdminStateBlockComponent } from './admin-ui.c
 import { TranslatePipe } from '../../core/i18n/translate.pipe'
 import { TranslationService } from '../../core/i18n/translation.service'
 
-type AdminEntity = 'products' | 'categories' | 'promotions' | 'orders' | 'payments' | 'users'
+type AdminEntity = 'products' | 'categories' | 'brands' | 'promotions' | 'orders' | 'payments' | 'users'
 type CrudMode = 'create' | 'view' | 'edit' | 'delete'
 
 interface CrudField {
@@ -109,16 +109,18 @@ interface CrudField {
                               optionValue="value"
                               [filter]="true"
                               filterBy="label"
-                              placeholder="Select a product"
+                              [placeholder]="'admin.orderDetail.selectProduct' | t"
                               appendTo="body"
                               styleClass="order-product-dropdown"
                               panelStyleClass="order-product-dropdown-panel"
                             />
-                            <label><span>Quantity</span><input type="number" min="1" step="1" [(ngModel)]="newOrderProductQuantity" [ngModelOptions]="{ standalone: true }" /></label>
-                            <button type="button" class="order-line-add-button" [disabled]="!selectedOrderProductId || orderItemsUpdating" (click)="addOrderProduct()"><i class="pi pi-plus" aria-hidden="true"></i> Add product</button>
+                            <label><span>{{ 'admin.orderDetail.quantity' | t }}</span><input type="number" min="1" step="1" [(ngModel)]="newOrderProductQuantity" [ngModelOptions]="{ standalone: true }" /></label>
+                            <button type="button" class="order-line-add-button" [disabled]="!selectedOrderProductId || orderItemsUpdating" (click)="addOrderProduct()">
+                              <i class="pi pi-plus" aria-hidden="true"></i><span>{{ 'admin.orderDetail.addProduct' | t }}</span>
+                            </button>
                           </div>
                           <div class="commerce-items-table" role="table" [attr.aria-label]="'admin.orderDetail.orderItems' | t">
-                            <div class="commerce-items-head" [class.editing]="mode === 'edit'" role="row"><span role="columnheader">{{ 'admin.orderDetail.product' | t }}</span><span role="columnheader">{{ 'admin.orderDetail.qty' | t }}</span><span role="columnheader">{{ 'admin.orderDetail.unitPrice' | t }}</span><span role="columnheader">{{ 'admin.orderDetail.total' | t }}</span><span *ngIf="mode === 'edit'" role="columnheader">Actions</span></div>
+                            <div class="commerce-items-head" [class.editing]="mode === 'edit'" role="row"><span role="columnheader">{{ 'admin.orderDetail.product' | t }}</span><span role="columnheader">{{ 'admin.orderDetail.qty' | t }}</span><span role="columnheader">{{ 'admin.orderDetail.unitPrice' | t }}</span><span role="columnheader">{{ 'admin.orderDetail.total' | t }}</span><span *ngIf="mode === 'edit'" role="columnheader">{{ 'common.actions' | t }}</span></div>
                             <div *ngIf="orderItems.length; else noCommerceItems" class="commerce-items-list" role="rowgroup">
                               <article *ngFor="let item of orderItems" [class.editing]="mode === 'edit'" role="row">
                                 <div class="commerce-product-cell" role="cell">
@@ -598,35 +600,35 @@ interface CrudField {
             <section class="promotion-picker-modal" [class.fullscreen]="productPickerFullscreen" role="dialog" aria-modal="true" aria-labelledby="promotion-picker-title" (click)="$event.stopPropagation()">
               <header class="promotion-picker-header">
                 <div>
-                  <h2 id="promotion-picker-title">Select applicable products</h2>
-                  <p class="muted">Choose individual products or entire categories that will receive this promotion.</p>
+                  <h2 id="promotion-picker-title">{{ 'admin.promotionPicker.title' | t }}</h2>
+                  <p class="muted">{{ 'admin.promotionPicker.subtitle' | t }}</p>
                 </div>
                 <div class="promotion-picker-window-actions">
                   <button type="button" class="icon-close-button" [attr.aria-label]="productPickerFullscreen ? 'Exit full page' : 'Open full page'" (click)="toggleProductPickerFullscreen()">
-                    {{ productPickerFullscreen ? 'Minimize' : 'Expand' }}
+                    {{ (productPickerFullscreen ? 'admin.promotionPicker.minimize' : 'admin.promotionPicker.expand') | t }}
                   </button>
                   <button type="button" class="icon-close-button picker-close-button" aria-label="Close" (click)="closeProductPicker()">×</button>
                 </div>
               </header>
 
               <nav class="promotion-picker-tabs" aria-label="Promotion picker tabs">
-                <button type="button" [class.active]="productPickerTab === 'products'" (click)="setProductPickerTab('products')">Products</button>
-                <button type="button" [class.active]="productPickerTab === 'categories'" (click)="setProductPickerTab('categories')">Categories</button>
+                <button type="button" [class.active]="productPickerTab === 'products'" (click)="setProductPickerTab('products')">{{ 'admin.promotionPicker.products' | t }}</button>
+                <button type="button" [class.active]="productPickerTab === 'categories'" (click)="setProductPickerTab('categories')">{{ 'admin.promotionPicker.categories' | t }}</button>
               </nav>
 
               <div class="promotion-picker-controls">
                 <label>
-                  <span>Search</span>
+                  <span>{{ 'admin.promotionPicker.search' | t }}</span>
                   <input
                     type="search"
                     [(ngModel)]="productPickerSearch"
                     (ngModelChange)="resetPickerPage()"
                     name="productPickerSearch"
-                    placeholder="Search name, SKU, or barcode..."
+                    [placeholder]="'admin.promotionPicker.searchPlaceholder' | t"
                   />
                 </label>
                 <label>
-                  <span>Category</span>
+                  <span>{{ 'admin.promotionPicker.category' | t }}</span>
                   <select
                     class="picker-filter-select"
                     [(ngModel)]="productPickerCategory"
@@ -638,7 +640,7 @@ interface CrudField {
                   </select>
                 </label>
                 <label>
-                  <span>Status</span>
+                  <span>{{ 'admin.promotionPicker.status' | t }}</span>
                   <select
                     class="picker-filter-select"
                     [(ngModel)]="productPickerStatus"
@@ -650,7 +652,7 @@ interface CrudField {
                   </select>
                 </label>
                 <label>
-                  <span>Price range</span>
+                  <span>{{ 'admin.promotionPicker.priceRange' | t }}</span>
                   <select
                     class="picker-filter-select"
                     [(ngModel)]="productPickerPriceRange"
@@ -662,7 +664,7 @@ interface CrudField {
                   </select>
                 </label>
                 <label>
-                  <span>Brand</span>
+                  <span>{{ 'admin.promotionPicker.brand' | t }}</span>
                   <select
                     class="picker-filter-select"
                     [(ngModel)]="productPickerBrand"
@@ -674,7 +676,7 @@ interface CrudField {
                   </select>
                 </label>
                 <label>
-                  <span>Availability</span>
+                  <span>{{ 'admin.promotionPicker.availability' | t }}</span>
                   <select
                     class="picker-filter-select"
                     [(ngModel)]="productPickerAvailability"
@@ -686,7 +688,7 @@ interface CrudField {
                   </select>
                 </label>
                 <label>
-                  <span>Sort by</span>
+                  <span>{{ 'admin.promotionPicker.sortBy' | t }}</span>
                   <select
                     class="picker-filter-select"
                     [(ngModel)]="productPickerSort"
@@ -698,7 +700,7 @@ interface CrudField {
                   </select>
                 </label>
                 <button type="button" class="secondary-button clear-filter-button" (click)="clearProductPickerFilters()">
-                  Reset filters
+                  {{ 'admin.promotionPicker.resetFilters' | t }}
                 </button>
               </div>
 
@@ -716,14 +718,14 @@ interface CrudField {
                               (change)="toggleAllFilteredProducts($event)"
                             />
                           </th>
-                          <th>Product</th>
+                          <th>{{ 'admin.promotionPicker.product' | t }}</th>
                           <th>SKU</th>
                           <th>Barcode</th>
-                          <th>Category</th>
-                          <th>Brand</th>
-                          <th>Price</th>
-                          <th>Stock</th>
-                          <th>Status</th>
+                          <th>{{ 'admin.promotionPicker.category' | t }}</th>
+                          <th>{{ 'admin.promotionPicker.brand' | t }}</th>
+                          <th>{{ 'admin.promotionPicker.price' | t }}</th>
+                          <th>{{ 'admin.promotionPicker.stock' | t }}</th>
+                          <th>{{ 'admin.promotionPicker.status' | t }}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -755,20 +757,20 @@ interface CrudField {
                           </td>
                           <td>{{ productSku(product) }}</td>
                           <td>{{ productBarcode(product) }}</td>
-                          <td>{{ product.category || categoryNameForId(product.category_id || null) || 'Uncategorized' }}</td>
+                          <td>{{ product.category || categoryNameForId(product.category_id || null) || ('admin.orderDetail.uncategorized' | t) }}</td>
                           <td>{{ productBrand(product) }}</td>
                           <td>{{ product.price | currency }}</td>
-                          <td>{{ productStock(product) }}</td>
+                          <td>{{ productStockLabel(product) }}</td>
                           <td>
-                            <span class="status-pill" [class.inactive]="productStatus(product) === 'Inactive'">{{ productStatus(product) }}</span>
+                            <span class="status-pill" [class.inactive]="productStatus(product) === 'Inactive'">{{ productStatusLabel(product) }}</span>
                           </td>
                         </tr>
                         <tr *ngIf="filteredPickerProducts.length === 0">
                           <td colspan="9" class="empty-table-cell">
                             <div class="empty-picker-state">
-                              <strong>No products found</strong>
-                              <span>Try resetting filters or checking another category.</span>
-                              <button type="button" class="secondary-button" (click)="clearProductPickerFilters()">Reset filters</button>
+                              <strong>{{ 'admin.promotionPicker.noProducts' | t }}</strong>
+                              <span>{{ 'admin.promotionPicker.noProductsHint' | t }}</span>
+                              <button type="button" class="secondary-button" (click)="clearProductPickerFilters()">{{ 'admin.promotionPicker.resetFilters' | t }}</button>
                             </div>
                           </td>
                         </tr>
@@ -776,10 +778,10 @@ interface CrudField {
                     </table>
 
                     <div class="promotion-picker-pagination" *ngIf="filteredPickerProducts.length">
-                      <span>Showing {{ pickerRangeStart }} to {{ pickerRangeEnd }} of {{ filteredPickerProducts.length }} products</span>
+                      <span>{{ 'admin.promotionPicker.showing' | t:{ start: pickerRangeStart, end: pickerRangeEnd, total: filteredPickerProducts.length } }}</span>
                       <div>
-                        <span class="rows-per-page">Rows: {{ productPickerPageSize }}</span>
-                        <button type="button" class="secondary-button" [disabled]="productPickerPage === 1" (click)="goToPickerPage(productPickerPage - 1)">Prev</button>
+                        <span class="rows-per-page">{{ 'admin.promotionPicker.rows' | t }}: {{ productPickerPageSize }}</span>
+                        <button type="button" class="secondary-button" [disabled]="productPickerPage === 1" (click)="goToPickerPage(productPickerPage - 1)">{{ 'admin.promotionPicker.previous' | t }}</button>
                         <button
                           type="button"
                           class="secondary-button"
@@ -789,7 +791,7 @@ interface CrudField {
                         >
                           {{ page }}
                         </button>
-                        <button type="button" class="secondary-button" [disabled]="productPickerPage === pickerPageCount" (click)="goToPickerPage(productPickerPage + 1)">Next</button>
+                        <button type="button" class="secondary-button" [disabled]="productPickerPage === pickerPageCount" (click)="goToPickerPage(productPickerPage + 1)">{{ 'admin.promotionPicker.next' | t }}</button>
                       </div>
                     </div>
                   </div>
@@ -804,55 +806,55 @@ interface CrudField {
                     >
                       <img [src]="categoryImage(category)" [alt]="category.name" />
                       <span>{{ category.name }}</span>
-                      <strong>{{ productsInCategory(category.id).length }} products</strong>
-                      <small>{{ category.description || 'No category description yet.' }}</small>
-                      <em>{{ isDraftCategorySelected(category.id) ? 'Selected' : 'Select entire category' }}</em>
+                      <strong>{{ productsInCategory(category.id).length }} {{ 'admin.promotionPicker.products' | t }}</strong>
+                      <small>{{ category.description || ('admin.promotionPicker.noCategoryDescription' | t) }}</small>
+                      <em>{{ (isDraftCategorySelected(category.id) ? 'admin.promotionPicker.selected' : 'admin.promotionPicker.selectCategory') | t }}</em>
                     </button>
                   </div>
                 </div>
 
                 <aside class="promotion-selection-summary">
-                  <h3>Selection summary</h3>
+                  <h3>{{ 'admin.promotionPicker.selectionSummary' | t }}</h3>
                   <div>
-                    <span>Products</span>
+                    <span>{{ 'admin.promotionPicker.products' | t }}</span>
                     <strong>{{ draftProductIds.length }}</strong>
                   </div>
                   <div>
-                    <span>Categories</span>
+                    <span>{{ 'admin.promotionPicker.categories' | t }}</span>
                     <strong>{{ draftCategoryIds.length }}</strong>
                   </div>
                   <div>
-                    <span>Total applicable</span>
+                    <span>{{ 'admin.promotionPicker.totalApplicable' | t }}</span>
                     <strong>{{ totalApplicableDraftProducts }}</strong>
                   </div>
                   <details open>
-                    <summary>Promotion preview</summary>
-                    <p>Products from selected categories are included in the total.</p>
+                    <summary>{{ 'admin.promotionPicker.preview' | t }}</summary>
+                    <p>{{ 'admin.promotionPicker.previewHint' | t }}</p>
                   </details>
                   <details>
-                    <summary>Included categories</summary>
+                    <summary>{{ 'admin.promotionPicker.includedCategories' | t }}</summary>
                     <button *ngFor="let category of draftCategorySummaries" type="button" (click)="setProductPickerTab('categories')">
                       {{ category.name }}
                     </button>
-                    <span *ngIf="draftCategorySummaries.length === 0">No categories selected.</span>
+                    <span *ngIf="draftCategorySummaries.length === 0">{{ 'admin.promotionPicker.noCategories' | t }}</span>
                   </details>
                   <details>
-                    <summary>Selected products</summary>
+                    <summary>{{ 'admin.promotionPicker.selectedProducts' | t }}</summary>
                     <button *ngFor="let product of draftProductSummaries" type="button" (click)="setProductPickerTab('products')">
                       {{ product.name }}
                     </button>
-                    <span *ngIf="draftProductSummaries.length === 0">No individual products selected.</span>
+                    <span *ngIf="draftProductSummaries.length === 0">{{ 'admin.promotionPicker.noSelectedProducts' | t }}</span>
                   </details>
                   <nav>
-                    <button type="button" (click)="clearDraftSelection()">Clear all</button>
+                    <button type="button" (click)="clearDraftSelection()">{{ 'admin.promotionPicker.clearAll' | t }}</button>
                   </nav>
                 </aside>
               </div>
 
               <footer class="promotion-picker-actions">
-                <button type="button" class="secondary-button" (click)="closeProductPicker()">Cancel</button>
+                <button type="button" class="secondary-button" (click)="closeProductPicker()">{{ 'common.cancel' | t }}</button>
                 <button type="button" class="admin-save-button" [disabled]="totalApplicableDraftProducts === 0" (click)="applyProductSelection()">
-                  Apply to {{ totalApplicableDraftProducts }} Products
+                  {{ 'admin.promotionPicker.apply' | t:{ count: totalApplicableDraftProducts } }}
                 </button>
               </footer>
             </section>
@@ -907,6 +909,7 @@ export class AdminCrudPageComponent implements OnInit, CanLeaveWithUnsavedChange
   ]
   categories: Category[] = []
   products: Product[] = []
+  brands: Brand[] = []
   productPickerOpen = false
   productPickerSearch = ''
   productPickerCategory = ''
@@ -953,7 +956,7 @@ export class AdminCrudPageComponent implements OnInit, CanLeaveWithUnsavedChange
   }
 
   get entitySingular(): string {
-    return this.entity === 'products' ? 'Product' : this.entity === 'categories' ? 'Category' : this.entity === 'promotions' ? 'Promotion' : this.entity === 'orders' ? 'Order' : this.entity === 'payments' ? 'Payment' : 'User'
+    return this.entity === 'products' ? 'Product' : this.entity === 'categories' ? 'Category' : this.entity === 'brands' ? 'Brand' : this.entity === 'promotions' ? 'Promotion' : this.entity === 'orders' ? 'Order' : this.entity === 'payments' ? 'Payment' : 'User'
   }
 
   get pageTitle(): string {
@@ -973,6 +976,7 @@ export class AdminCrudPageComponent implements OnInit, CanLeaveWithUnsavedChange
     if (this.entity === 'categories') {
       return 'This category may contain products. Deleting it could affect product organization. This action cannot be undone.'
     }
+    if (this.entity === 'brands') return 'This brand can only be deleted when no products use it.'
     if (this.entity === 'orders') {
       return 'This removes the order record from the admin database. This action cannot be undone.'
     }
@@ -1247,6 +1251,17 @@ export class AdminCrudPageComponent implements OnInit, CanLeaveWithUnsavedChange
       ]
     }
 
+    if (this.entity === 'brands') {
+      return [
+        { key: 'id', label: 'Brand ID', type: 'number', readonly: true },
+        { key: 'name', label: 'Brand name', type: 'text', required: true },
+        { key: 'description', label: 'Description', type: 'textarea' },
+        { key: 'is_active', label: 'Brand status', type: 'select', options: ['true', 'false'] },
+        { key: 'created_at', label: 'Created at', type: 'text', readonly: true },
+        { key: 'updated_at', label: 'Updated at', type: 'text', readonly: true }
+      ]
+    }
+
     if (this.entity === 'promotions') {
       return [
         { key: 'id', label: 'Promotion ID', type: 'number', readonly: true },
@@ -1282,6 +1297,7 @@ export class AdminCrudPageComponent implements OnInit, CanLeaveWithUnsavedChange
       { key: 'name', label: 'Product name', type: 'text', required: true },
       { key: 'price', label: 'Price', type: 'number', required: true },
       { key: 'category_id', label: 'Category', type: 'select', options: this.categoryOptionValues },
+      { key: 'brand_id', label: 'Brand', type: 'select', options: this.brandOptionValues },
       { key: 'active_promotions', label: 'Active promotions', type: 'text', readonly: true, help: 'Promotions are managed from the Promotion page.' },
       { key: 'images', label: 'Product images', type: 'imageList' },
       { key: 'description', label: 'Description', type: 'textarea' },
@@ -1449,6 +1465,7 @@ export class AdminCrudPageComponent implements OnInit, CanLeaveWithUnsavedChange
     if (this.entity === 'products' && field.key === 'category_id') {
       return this.categorySelectOptions
     }
+    if (this.entity === 'products' && field.key === 'brand_id') return this.brandSelectOptions
 
     if (field.key === 'is_active') {
       return [
@@ -1490,22 +1507,22 @@ export class AdminCrudPageComponent implements OnInit, CanLeaveWithUnsavedChange
 
   get productPickerStatusOptions(): SelectOption<string>[] {
     return [
-      { value: 'all', label: 'All' },
-      { value: 'active', label: 'Active' },
-      { value: 'inactive', label: 'Inactive' }
+      { value: 'all', label: this.i18n.translate('common.all') },
+      { value: 'active', label: this.i18n.translate('common.active') },
+      { value: 'inactive', label: this.i18n.translate('common.inactive') }
     ]
   }
 
   get productPickerCategoryOptions(): SelectOption<string>[] {
     return [
-      { value: '', label: 'All categories' },
+      { value: '', label: `${this.i18n.translate('common.all')} ${this.i18n.translate('admin.promotionPicker.categories')}` },
       ...this.categories.map(category => ({ value: String(category.id), label: category.name }))
     ]
   }
 
   get productPickerPriceOptions(): SelectOption<string>[] {
     return [
-      { value: 'all', label: 'All prices' },
+      { value: 'all', label: `${this.i18n.translate('common.all')} ${this.i18n.translate('admin.promotionPicker.price')}` },
       { value: '0-75', label: '₪0 - ₪75' },
       { value: '75-150', label: '₪75 - ₪150' },
       { value: '150+', label: '₪150+' }
@@ -1515,25 +1532,25 @@ export class AdminCrudPageComponent implements OnInit, CanLeaveWithUnsavedChange
   get productPickerBrandOptions(): SelectOption<string>[] {
     const brands = Array.from(new Set(this.products.map(product => this.productBrand(product)))).sort()
     return [
-      { value: 'all', label: 'All brands' },
+      { value: 'all', label: `${this.i18n.translate('common.all')} ${this.i18n.translate('admin.promotionPicker.brand')}` },
       ...brands.map(brand => ({ value: brand, label: brand }))
     ]
   }
 
   get productPickerAvailabilityOptions(): SelectOption<string>[] {
     return [
-      { value: 'all', label: 'All availability' },
-      { value: 'in-stock', label: 'In stock' },
-      { value: 'out-of-stock', label: 'Out of stock' }
+      { value: 'all', label: `${this.i18n.translate('common.all')} ${this.i18n.translate('admin.promotionPicker.availability')}` },
+      { value: 'in-stock', label: this.i18n.currentLanguage === 'ar' ? 'متوفر' : 'In stock' },
+      { value: 'out-of-stock', label: this.i18n.currentLanguage === 'ar' ? 'غير متوفر' : 'Out of stock' }
     ]
   }
 
   get productPickerSortOptions(): SelectOption<string>[] {
     return [
-      { value: 'name-asc', label: 'Name A-Z' },
-      { value: 'price-asc', label: 'Price low to high' },
-      { value: 'price-desc', label: 'Price high to low' },
-      { value: 'updated-desc', label: 'Last updated' }
+      { value: 'name-asc', label: this.i18n.currentLanguage === 'ar' ? 'الاسم أ-ي' : 'Name A-Z' },
+      { value: 'price-asc', label: this.i18n.currentLanguage === 'ar' ? 'السعر من الأقل للأعلى' : 'Price low to high' },
+      { value: 'price-desc', label: this.i18n.currentLanguage === 'ar' ? 'السعر من الأعلى للأقل' : 'Price high to low' },
+      { value: 'updated-desc', label: this.i18n.currentLanguage === 'ar' ? 'آخر تحديث' : 'Last updated' }
     ]
   }
 
@@ -1811,8 +1828,7 @@ export class AdminCrudPageComponent implements OnInit, CanLeaveWithUnsavedChange
   }
 
   productBrand(product: Product): string {
-    const words = product.name.split(' ').filter(Boolean)
-    return words[0] || '7 Stars'
+    return product.brand || 'No brand'
   }
 
   productStock(product: Product): string {
@@ -1967,6 +1983,7 @@ export class AdminCrudPageComponent implements OnInit, CanLeaveWithUnsavedChange
     if (this.entity === 'orders' || this.entity === 'payments') return this.adminData.loadOrders()
     if (this.entity === 'users') return this.adminData.loadUsers()
     if (this.entity === 'categories') return this.adminData.loadCategories()
+    if (this.entity === 'brands') return this.adminData.loadBrands()
     if (this.entity === 'promotions') return this.adminData.loadPromotions()
     return this.adminData.loadProducts()
   }
@@ -2009,6 +2026,15 @@ export class AdminCrudPageComponent implements OnInit, CanLeaveWithUnsavedChange
           this.products = []
         }
       })
+      this.adminData.loadBrands().subscribe({
+        next: brands => {
+          this.brands = brands
+          this.setFields()
+          if (this.form['brand_id']) this.form['brand_id'] = String(this.form['brand_id'])
+          this.captureInitialState()
+        },
+        error: () => { this.brands = [] }
+      })
     }
 
     if (this.entity === 'orders') {
@@ -2017,6 +2043,26 @@ export class AdminCrudPageComponent implements OnInit, CanLeaveWithUnsavedChange
         error: () => { this.products = [] }
       })
     }
+  }
+
+  productStockLabel(product: Product): string {
+    return this.i18n.currentLanguage === 'ar'
+      ? (this.productStatus(product) === 'Inactive' ? 'غير متوفر' : 'متوفر')
+      : this.productStock(product)
+  }
+
+  productStatusLabel(product: Product): string {
+    const active = this.productStatus(product) === 'Active'
+    return this.i18n.translate(active ? 'common.active' : 'common.inactive')
+  }
+
+  private get brandOptionValues(): string[] { return this.brands.map(brand => String(brand.id)) }
+
+  private get brandSelectOptions(): SelectOption<string>[] {
+    return [
+      { value: '', label: 'No brand' },
+      ...this.brands.filter(brand => brand.is_active !== false).map(brand => ({ value: String(brand.id), label: brand.name }))
+    ]
   }
 
   private emptyForm(): Record<string, any> {
@@ -2032,10 +2078,11 @@ export class AdminCrudPageComponent implements OnInit, CanLeaveWithUnsavedChange
     if (this.entity === 'categories') {
       return { id: '', name: '', description: '', created_at: '', updated_at: '' }
     }
+    if (this.entity === 'brands') return { id: '', name: '', description: '', is_active: 'true', created_at: '', updated_at: '' }
     if (this.entity === 'promotions') {
       return { id: '', name: '', type: 'PERCENT', value: '', bundle_quantity: '', bundle_price: '', is_active: 'true', productIds: [], categoryIds: [], products: [] }
     }
-    return { id: '', name: '', price: '', category_id: '', active_promotions: '', images: ['', '', '', '', ''], description: '', created_at: '', updated_at: '' }
+    return { id: '', name: '', price: '', category_id: '', brand_id: '', active_promotions: '', images: ['', '', '', '', ''], description: '', created_at: '', updated_at: '' }
   }
 
   private captureInitialState() {
@@ -2057,6 +2104,7 @@ export class AdminCrudPageComponent implements OnInit, CanLeaveWithUnsavedChange
     if (this.entity === 'products') {
       payload['price'] = Number(payload['price']) || 0
       payload['category_id'] = payload['category_id'] ? Number(payload['category_id']) : null
+      payload['brand_id'] = payload['brand_id'] ? Number(payload['brand_id']) : null
       payload['category'] = this.categoryNameForId(payload['category_id'])
       payload['images'] = this.normalizeProductImages(payload['images'])
       payload['url'] = payload['images'][0] || ''
@@ -2081,6 +2129,7 @@ export class AdminCrudPageComponent implements OnInit, CanLeaveWithUnsavedChange
     if (this.entity === 'users' && !payload['password']) {
       delete payload['password']
     }
+    if (this.entity === 'brands') payload['is_active'] = payload['is_active'] === true || payload['is_active'] === 'true'
     return payload
   }
 
@@ -2104,11 +2153,12 @@ export class AdminCrudPageComponent implements OnInit, CanLeaveWithUnsavedChange
       return {
         ...record,
         category_id: record['category_id'] ? String(record['category_id']) : '',
+        brand_id: record['brand_id'] ? String(record['brand_id']) : '',
         images: this.normalizeProductImages(record['images']?.length ? record['images'] : [record['url']])
       }
     }
 
-    if ((this.entity === 'promotions' || this.entity === 'users') && 'is_active' in record) {
+    if ((this.entity === 'promotions' || this.entity === 'users' || this.entity === 'brands') && 'is_active' in record) {
       return {
         ...record,
         is_active: record['is_active'] === true || record['is_active'] === 'true' ? 'true' : 'false',
@@ -2155,6 +2205,7 @@ export class AdminCrudPageComponent implements OnInit, CanLeaveWithUnsavedChange
     if (this.entity === 'categories') {
       return this.adminData.getCategory(this.id)
     }
+    if (this.entity === 'brands') return this.adminData.getBrand(this.id)
     if (this.entity === 'promotions') {
       return this.adminData.getPromotion(this.id)
     }
@@ -2171,6 +2222,7 @@ export class AdminCrudPageComponent implements OnInit, CanLeaveWithUnsavedChange
     if (this.entity === 'categories') {
       return this.adminData.createCategory(payload)
     }
+    if (this.entity === 'brands') return this.adminData.createBrand(payload)
     if (this.entity === 'promotions') {
       return this.adminData.createPromotion(payload)
     }
@@ -2187,6 +2239,7 @@ export class AdminCrudPageComponent implements OnInit, CanLeaveWithUnsavedChange
     if (this.entity === 'categories') {
       return this.adminData.updateCategory(this.id, payload)
     }
+    if (this.entity === 'brands') return this.adminData.updateBrand(this.id, payload)
     if (this.entity === 'promotions') {
       return this.adminData.updatePromotion(this.id, payload)
     }
@@ -2203,6 +2256,7 @@ export class AdminCrudPageComponent implements OnInit, CanLeaveWithUnsavedChange
     if (this.entity === 'categories') {
       return this.adminData.deleteCategory(this.id)
     }
+    if (this.entity === 'brands') return this.adminData.deleteBrand(this.id)
     if (this.entity === 'promotions') {
       return this.adminData.deletePromotion(this.id)
     }

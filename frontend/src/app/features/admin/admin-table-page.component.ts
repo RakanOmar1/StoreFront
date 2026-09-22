@@ -6,14 +6,14 @@ import { Observable, Subscription } from 'rxjs'
 import { switchMap, timeout } from 'rxjs/operators'
 import { AdminDataService } from '../../core/services/admin-data.service'
 import { Order } from '../../shared/interfaces/order'
-import { Category, Product, Promotion } from '../../shared/interfaces/product'
+import { Brand, Category, Product, Promotion } from '../../shared/interfaces/product'
 import { PublicUser } from '../../shared/interfaces/user'
 import { AdminConfirmationDialogComponent } from './admin-confirmation-dialog.component'
 import { AdminDataTableComponent } from './admin-data-table.component'
 import { AdminSidebarComponent } from './admin-sidebar.component'
 import { AdminStateBlockComponent } from './admin-ui.component'
 
-type AdminTableType = 'products' | 'categories' | 'promotions' | 'orders' | 'payments' | 'users'
+type AdminTableType = 'products' | 'categories' | 'brands' | 'promotions' | 'orders' | 'payments' | 'users'
 
 @Component({
   selector: 'app-admin-table-page',
@@ -60,6 +60,14 @@ type AdminTableType = 'products' | 'categories' | 'promotions' | 'orders' | 'pay
             [columns]="categoryColumns"
             (refresh)="loadTableData()"
             (rowView)="viewRow($event)"
+          />
+
+          <app-admin-data-table
+            *ngIf="!loading && tableType === 'brands'"
+            eyebrow="Brands" title="Product brands" filterLabel="Status" filterField="status"
+            searchPlaceholder="Search brands..." createLink="/admin/brands/new" dashboardLink="/admin" storeLink="/products"
+            [filterOptions]="promotionStatuses" [rows]="brandRows" [columns]="brandColumns"
+            (refresh)="loadTableData()" (rowView)="viewRow($event)"
           />
 
           <app-admin-data-table
@@ -175,6 +183,7 @@ export class AdminTablePageComponent implements OnInit, OnDestroy {
   orders: Order[] = []
   products: Product[] = []
   categories: Category[] = []
+  brands: Brand[] = []
   promotions: Promotion[] = []
   users: PublicUser[] = []
   deleteDialogOpen = false
@@ -208,6 +217,14 @@ export class AdminTablePageComponent implements OnInit, OnDestroy {
     { field: 'description', headerName: 'Description' },
     this.createdColumn(),
     this.actionColumn('categories')
+  ]
+
+  brandColumns: ColDef[] = [
+    { field: 'id', headerName: 'ID', width: 90, flex: 0 },
+    { field: 'name', headerName: 'Brand' },
+    { field: 'description', headerName: 'Description' },
+    { field: 'status', headerName: 'Status' },
+    this.createdColumn(), this.actionColumn('brands')
   ]
 
   promotionColumns: ColDef[] = [
@@ -282,6 +299,7 @@ export class AdminTablePageComponent implements OnInit, OnDestroy {
     this.orders = []
     this.products = []
     this.categories = []
+    this.brands = []
     this.promotions = []
     this.users = []
 
@@ -289,6 +307,10 @@ export class AdminTablePageComponent implements OnInit, OnDestroy {
       this.loadList(this.adminData.loadCategories(), requestId, categories => {
         this.categories = categories
       })
+      return
+    }
+    if (this.tableType === 'brands') {
+      this.loadList(this.adminData.loadBrands(), requestId, brands => { this.brands = brands })
       return
     }
 
@@ -374,6 +396,7 @@ export class AdminTablePageComponent implements OnInit, OnDestroy {
     if (this.selectedDeleteEntity === 'categories') {
       return 'This category may contain products. The backend will block deletion while products are assigned to it.'
     }
+    if (this.selectedDeleteEntity === 'brands') return 'The backend will block deletion while products are assigned to this brand.'
     if (this.selectedDeleteEntity === 'orders') {
       return 'This removes the order record and its related order items. This action cannot be undone.'
     }
@@ -393,6 +416,7 @@ export class AdminTablePageComponent implements OnInit, OnDestroy {
     if (this.selectedDeleteEntity === 'categories') {
       return 'Category'
     }
+    if (this.selectedDeleteEntity === 'brands') return 'Brand'
     if (this.selectedDeleteEntity === 'orders' || this.selectedDeleteEntity === 'payments') {
       return this.selectedDeleteEntity === 'payments' ? 'Payment' : 'Order'
     }
@@ -470,6 +494,7 @@ export class AdminTablePageComponent implements OnInit, OnDestroy {
     if (entity === 'categories') {
       return this.adminData.deleteCategory(id)
     }
+    if (entity === 'brands') return this.adminData.deleteBrand(id)
     if (entity === 'orders') {
       return this.adminData.deleteOrder(id)
     }
@@ -520,6 +545,7 @@ export class AdminTablePageComponent implements OnInit, OnDestroy {
     if (this.tableType === 'categories') {
       return 'Categories'
     }
+    if (this.tableType === 'brands') return 'Brands'
     if (this.tableType === 'users') {
       return 'Users'
     }
@@ -540,6 +566,7 @@ export class AdminTablePageComponent implements OnInit, OnDestroy {
     if (this.tableType === 'categories') {
       return 'Manage product categories.'
     }
+    if (this.tableType === 'brands') return 'Manage reusable product brand tags.'
     if (this.tableType === 'users') {
       return 'Review user accounts with search and role filters.'
     }
@@ -568,6 +595,13 @@ export class AdminTablePageComponent implements OnInit, OnDestroy {
       name: category.name,
       description: category.description || 'None',
       created_at: category.created_at || ''
+    })))
+  }
+
+  get brandRows(): Record<string, unknown>[] {
+    return this.cachedRows('brands', this.brands, () => this.brands.map(brand => ({
+      id: brand.id, name: brand.name, description: brand.description || 'None',
+      status: brand.is_active === false ? 'Inactive' : 'Active', created_at: brand.created_at || ''
     })))
   }
 

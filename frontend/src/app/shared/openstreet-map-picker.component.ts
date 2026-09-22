@@ -8,7 +8,7 @@ import { MapPoint, OpenStreetMapService, ResolvedMapLocation } from '../core/ser
   template: `
     <div class="map-dialog-backdrop" (click)="cancel.emit()"></div>
     <section class="map-dialog" role="dialog" aria-modal="true" aria-labelledby="map-picker-title">
-      <header><div><h2 id="map-picker-title">{{ rtl ? 'حدد موقعك على الخريطة' : 'Choose your location' }}</h2><p>{{ rtl ? 'انقر على الخريطة أو اسحب العلامة لتغيير نقطة التوصيل.' : 'Click the map or drag the marker to change the delivery point.' }}</p></div><button type="button" class="map-dialog-close" (click)="cancel.emit()" aria-label="Close map">×</button></header>
+      <header><div><h2 id="map-picker-title">{{ rtl ? 'حدد موقعك على الخريطة' : 'Choose your location' }}</h2><p>{{ rtl ? 'انقر على الخريطة أو اسحب العلامة لتغيير نقطة التوصيل.' : 'Click the map or drag the marker to change the delivery point.' }}</p></div><button type="button" class="map-dialog-close" (click)="cancel.emit()" aria-label="Close map"><i class="pi pi-times" aria-hidden="true"></i></button></header>
       <div #mapCanvas class="map-picker-canvas"></div>
       <p *ngIf="loading" class="map-dialog-state">{{ rtl ? 'جاري تحديد العنوان…' : 'Finding the address…' }}</p>
       <p *ngIf="error" class="map-dialog-state error">{{ error }}</p>

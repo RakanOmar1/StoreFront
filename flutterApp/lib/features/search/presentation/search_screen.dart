@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -57,7 +58,7 @@ class _SearchState extends State<SearchScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Search')),
+    appBar: AppBar(title: Text('navSearch'.tr())),
     body: Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -69,7 +70,7 @@ class _SearchState extends State<SearchScreen> {
             onChanged: _changed,
             onSubmitted: _submit,
             decoration: InputDecoration(
-              hintText: 'Search products',
+              hintText: 'search'.tr(),
               prefixIcon: const Icon(Icons.search),
               suffixIcon: controller.text.isEmpty
                   ? null
@@ -86,9 +87,12 @@ class _SearchState extends State<SearchScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Recent searches',
-                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
+              Text(
+                _t(context, 'عمليات البحث الأخيرة', 'Recent searches'),
+                style: const TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 18,
+                ),
               ),
               if (recent.isNotEmpty)
                 TextButton(
@@ -97,13 +101,21 @@ class _SearchState extends State<SearchScreen> {
                     await p.remove('recent_searches');
                     setState(() => recent = []);
                   },
-                  child: const Text('Clear'),
+                  child: Text(_t(context, 'مسح', 'Clear')),
                 ),
             ],
           ),
           if (recent.isEmpty)
-            const Expanded(
-              child: Center(child: Text('Search for products by name')),
+            Expanded(
+              child: Center(
+                child: Text(
+                  _t(
+                    context,
+                    'ابحث عن المنتجات بالاسم',
+                    'Search for products by name',
+                  ),
+                ),
+              ),
             ),
           Wrap(
             spacing: 8,
@@ -124,3 +136,6 @@ class _SearchState extends State<SearchScreen> {
     ),
   );
 }
+
+String _t(BuildContext context, String ar, String en) =>
+    context.locale.languageCode == 'ar' ? ar : en;

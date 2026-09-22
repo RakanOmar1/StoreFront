@@ -40,6 +40,10 @@ class AuthRepository {
     required String lastname,
     required String email,
     required String phone,
+    required String address,
+    required String city,
+    double? latitude,
+    double? longitude,
     required String password,
   }) async {
     final r = await api.dio.post(
@@ -49,6 +53,10 @@ class AuthRepository {
         'lastname': lastname.trim(),
         'email': email.trim().isEmpty ? null : email.trim(),
         'phone': phone.trim().isEmpty ? null : phone.trim(),
+        'address': address.trim(),
+        'city': city.trim(),
+        'latitude': latitude,
+        'longitude': longitude,
         'password': password,
       },
     );
@@ -70,6 +78,8 @@ class AuthRepository {
     required String phone,
     required String address,
     required String city,
+    double? latitude,
+    double? longitude,
   }) async => _storeUser(
     Map<String, dynamic>.from(
       (await api.dio.patch(
@@ -79,6 +89,8 @@ class AuthRepository {
               'phone': phone,
               'address': address,
               'city': city,
+              'latitude': latitude,
+              'longitude': longitude,
             },
           )).data
           as Map,
@@ -130,6 +142,9 @@ class AuthRepository {
     await storage.delete(key: tokenKey);
     await storage.delete(key: userKey);
   }
+
+  Future<bool> hasSession() async =>
+      (await storage.read(key: tokenKey))?.isNotEmpty == true;
 
   bool _expired(String token) {
     try {

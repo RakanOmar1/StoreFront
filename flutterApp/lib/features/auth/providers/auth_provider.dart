@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../shared/providers.dart';
 import '../data/auth_repository.dart';
@@ -16,9 +18,16 @@ final authProvider = NotifierProvider<AuthNotifier, AuthState>(
 
 class AuthNotifier extends Notifier<AuthState> {
   late AuthRepository repo;
+  StreamSubscription<void>? unauthorizedSubscription;
+
   @override
   AuthState build() {
     repo = ref.watch(authRepositoryProvider);
+    unauthorizedSubscription?.cancel();
+    unauthorizedSubscription = repo.api.unauthorized.listen((_) {
+      state = const AuthState();
+    });
+    ref.onDispose(() => unauthorizedSubscription?.cancel());
     Future.microtask(restore);
     return const AuthState(loading: true);
   }
@@ -32,7 +41,9 @@ class AuthNotifier extends Notifier<AuthState> {
     try {
       state = AuthState(user: await repo.profile());
     } catch (_) {
-      state = AuthState(user: cached, error: 'profileLoadError');
+      state = await repo.hasSession()
+          ? AuthState(user: cached, error: 'profileLoadError')
+          : const AuthState();
     }
   }
 
@@ -52,6 +63,10 @@ class AuthNotifier extends Notifier<AuthState> {
     required String lastname,
     required String email,
     required String phone,
+    required String address,
+    required String city,
+    double? latitude,
+    double? longitude,
     required String password,
   }) async {
     state = state.copyWith(loading: true, clearError: true);
@@ -62,6 +77,10 @@ class AuthNotifier extends Notifier<AuthState> {
           lastname: lastname,
           email: email,
           phone: phone,
+          address: address,
+          city: city,
+          latitude: latitude,
+          longitude: longitude,
           password: password,
         ),
       );
@@ -92,6 +111,8 @@ class AuthNotifier extends Notifier<AuthState> {
     required String phone,
     required String address,
     required String city,
+    double? latitude,
+    double? longitude,
   }) async {
     state = state.copyWith(loading: true, clearError: true);
     try {
@@ -101,6 +122,8 @@ class AuthNotifier extends Notifier<AuthState> {
           phone: phone,
           address: address,
           city: city,
+          latitude: latitude,
+          longitude: longitude,
         ),
       );
       return true;

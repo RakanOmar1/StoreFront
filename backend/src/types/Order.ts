@@ -12,6 +12,8 @@ export type Order = {
   payment_method?: PaymentMethod
   delivery_type?: DeliveryType
   delivery_address?: string | null
+  delivery_latitude?: number | null
+  delivery_longitude?: number | null
   items?: OrderProduct[]
 }
 
@@ -29,4 +31,6 @@ export type CheckoutPayload = {
   paymentMethod: PaymentMethod
   deliveryType: DeliveryType
   deliveryAddress?: string
+  deliveryLatitude?: number
+  deliveryLongitude?: number
 }

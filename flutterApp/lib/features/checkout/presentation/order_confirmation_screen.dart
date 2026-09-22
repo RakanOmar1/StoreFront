@@ -32,7 +32,16 @@ class OrderConfirmationScreen extends StatelessWidget {
               textAlign: TextAlign.center,
               style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w900),
             ),
-            Text(response!.message, textAlign: TextAlign.center),
+            Text(
+              o.paymentMethod == PaymentMethod.cash
+                  ? _t(
+                      context,
+                      'ادفع نقداً عند استلام طلبك.',
+                      'Pay with cash when you receive your order.',
+                    )
+                  : response!.message,
+              textAlign: TextAlign.center,
+            ),
             const SizedBox(height: 28),
             Card(
               child: Padding(
@@ -41,8 +50,11 @@ class OrderConfirmationScreen extends StatelessWidget {
                   children: [
                     _row('orderId'.tr(), '#${o.id}'),
                     _row('total'.tr(), m.format(o.totalAmount)),
-                    _row('status'.tr(), o.status),
-                    _row('paymentStatus'.tr(), o.paymentStatus),
+                    _row('status'.tr(), _statusLabel(context, o.status)),
+                    _row(
+                      'paymentStatus'.tr(),
+                      _paymentStatusLabel(context, o.paymentStatus),
+                    ),
                     _row(
                       'paymentMethod'.tr(),
                       o.paymentMethod == PaymentMethod.cash
@@ -91,3 +103,26 @@ class OrderConfirmationScreen extends StatelessWidget {
     ),
   );
 }
+
+String _statusLabel(BuildContext context, String status) {
+  final value = status.toUpperCase();
+  return switch (value) {
+    'PENDING' => _t(context, 'قيد الانتظار', 'Pending'),
+    'CONFIRMED' => _t(context, 'تم التأكيد', 'Confirmed'),
+    'PREPARING' => _t(context, 'قيد التجهيز', 'Preparing'),
+    'OUT_FOR_DELIVERY' => _t(context, 'خرج للتوصيل', 'Out for delivery'),
+    'DELIVERED' => _t(context, 'تم التوصيل', 'Delivered'),
+    'CANCELLED' => _t(context, 'ملغي', 'Cancelled'),
+    _ => value.replaceAll('_', ' '),
+  };
+}
+
+String _paymentStatusLabel(BuildContext context, String status) =>
+    switch (status.toUpperCase()) {
+      'PAID' => _t(context, 'مدفوع', 'Paid'),
+      'FAILED' => _t(context, 'فشل الدفع', 'Failed'),
+      _ => _t(context, 'بانتظار الدفع', 'Pending'),
+    };
+
+String _t(BuildContext context, String ar, String en) =>
+    context.locale.languageCode == 'ar' ? ar : en;

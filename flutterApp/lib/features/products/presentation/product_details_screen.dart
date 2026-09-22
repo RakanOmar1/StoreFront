@@ -1,11 +1,12 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/providers.dart';
 import '../../../shared/widgets/product_card.dart';
+import '../../wishlist/providers/wishlist_provider.dart';
 
 class ProductDetailsScreen extends ConsumerStatefulWidget {
   const ProductDetailsScreen({super.key, required this.id});
@@ -16,7 +17,6 @@ class ProductDetailsScreen extends ConsumerStatefulWidget {
 
 class _DetailsState extends ConsumerState<ProductDetailsScreen> {
   int quantity = 1;
-  bool wished = false;
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(productProvider(widget.id));
@@ -28,15 +28,20 @@ class _DetailsState extends ConsumerState<ProductDetailsScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('Could not load product'),
+              Text(
+                context.locale.languageCode == 'ar'
+                    ? 'تعذر تحميل المنتج'
+                    : 'Could not load product',
+              ),
               TextButton(
                 onPressed: () => ref.invalidate(productProvider(widget.id)),
-                child: const Text('Retry'),
+                child: Text('retry'.tr()),
               ),
             ],
           ),
         ),
         data: (product) {
+          final wished = ref.watch(wishlistProvider).contains(product.id);
           final money = NumberFormat.simpleCurrency(name: 'ILS');
           final images = {
             product.image,
@@ -51,7 +56,9 @@ class _DetailsState extends ConsumerState<ProductDetailsScreen> {
                       items: (images.isEmpty ? [''] : images)
                           .map(
                             (url) => Container(
-                              color: Colors.white,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.surfaceContainerHighest,
                               child: url.isEmpty
                                   ? const Center(
                                       child: Icon(
@@ -117,19 +124,23 @@ class _DetailsState extends ConsumerState<ProductDetailsScreen> {
                           ],
                         ),
                         const SizedBox(height: 20),
-                        const Row(
+                        Row(
                           children: [
                             Icon(Icons.check_circle, color: AppColors.green),
                             SizedBox(width: 7),
                             Text(
-                              'In stock',
+                              context.locale.languageCode == 'ar'
+                                  ? 'متوفر'
+                                  : 'In stock',
                               style: TextStyle(fontWeight: FontWeight.w700),
                             ),
                           ],
                         ),
                         const SizedBox(height: 24),
-                        const Text(
-                          'Description',
+                        Text(
+                          context.locale.languageCode == 'ar'
+                              ? 'الوصف'
+                              : 'Description',
                           style: TextStyle(
                             fontSize: 19,
                             fontWeight: FontWeight.w800,
@@ -138,13 +149,17 @@ class _DetailsState extends ConsumerState<ProductDetailsScreen> {
                         const SizedBox(height: 8),
                         Text(
                           product.description.isEmpty
-                              ? 'Quality product selected by 7 Stars Mall.'
+                              ? (context.locale.languageCode == 'ar'
+                                    ? 'منتج عالي الجودة مختار من سفن ستارز مول.'
+                                    : 'Quality product selected by 7 Stars Mall.')
                               : product.description,
                           style: const TextStyle(height: 1.6),
                         ),
                         const SizedBox(height: 28),
-                        const Text(
-                          'Similar products',
+                        Text(
+                          context.locale.languageCode == 'ar'
+                              ? 'منتجات مشابهة'
+                              : 'Similar products',
                           style: TextStyle(
                             fontSize: 19,
                             fontWeight: FontWeight.w800,
@@ -152,7 +167,7 @@ class _DetailsState extends ConsumerState<ProductDetailsScreen> {
                         ),
                         const SizedBox(height: 12),
                         SizedBox(
-                          height: 290,
+                          height: 328,
                           child: Consumer(
                             builder: (context, ref, child) {
                               final all = ref.watch(productsProvider);
@@ -189,12 +204,21 @@ class _DetailsState extends ConsumerState<ProductDetailsScreen> {
                 child: SafeArea(
                   top: false,
                   child: Container(
-                    color: Colors.white,
+                    color: Theme.of(context).colorScheme.surface,
                     padding: const EdgeInsets.all(10),
                     child: Row(
                       children: [
                         IconButton(
-                          onPressed: () => setState(() => wished = !wished),
+                          tooltip: wished
+                              ? (context.locale.languageCode == 'ar'
+                                    ? 'إزالة من المفضلة'
+                                    : 'Remove from favorites')
+                              : (context.locale.languageCode == 'ar'
+                                    ? 'إضافة إلى المفضلة'
+                                    : 'Add to favorites'),
+                          onPressed: () => ref
+                              .read(wishlistProvider.notifier)
+                              .toggle(product.id),
                           icon: Icon(
                             wished ? Icons.favorite : Icons.favorite_border,
                             color: wished ? AppColors.red : null,
@@ -202,7 +226,9 @@ class _DetailsState extends ConsumerState<ProductDetailsScreen> {
                         ),
                         Container(
                           decoration: BoxDecoration(
-                            color: const Color(0xffeef3ef),
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.surfaceContainerHighest,
                             borderRadius: BorderRadius.circular(14),
                           ),
                           child: Row(
@@ -234,13 +260,23 @@ class _DetailsState extends ConsumerState<ProductDetailsScreen> {
                                   .read(cartProvider.notifier)
                                   .add(product, quantity: quantity);
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Added to cart')),
+                                SnackBar(
+                                  content: Text(
+                                    context.locale.languageCode == 'ar'
+                                        ? 'تمت الإضافة إلى السلة'
+                                        : 'Added to cart',
+                                  ),
+                                ),
                               );
                             },
                             style: FilledButton.styleFrom(
                               minimumSize: const Size(0, 54),
                             ),
-                            child: const Text('Add to cart'),
+                            child: Text(
+                              context.locale.languageCode == 'ar'
+                                  ? 'أضف إلى السلة'
+                                  : 'Add to cart',
+                            ),
                           ),
                         ),
                       ],

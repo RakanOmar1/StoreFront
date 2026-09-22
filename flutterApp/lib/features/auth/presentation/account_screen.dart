@@ -85,6 +85,44 @@ class AccountScreen extends ConsumerWidget {
                 ),
               ),
             ),
+            if (user.role == 'ADMIN' ||
+                user.role == 'MANAGER' ||
+                user.role == 'DELIVERY') ...[
+              _plainTitle(
+                user.role == 'DELIVERY'
+                    ? _localized(
+                        context,
+                        'عمليات التوصيل',
+                        'Delivery operations',
+                      )
+                    : _localized(context, 'إدارة المتجر', 'Store operations'),
+              ),
+              Card(
+                color: theme.colorScheme.secondaryContainer,
+                child: ListTile(
+                  leading: Icon(
+                    user.role == 'DELIVERY'
+                        ? Icons.local_shipping_outlined
+                        : Icons.admin_panel_settings_outlined,
+                  ),
+                  title: Text(
+                    user.role == 'DELIVERY'
+                        ? _localized(
+                            context,
+                            'فتح عمليات التوصيل',
+                            'Open delivery operations',
+                          )
+                        : _localized(
+                            context,
+                            'فتح إدارة المتجر',
+                            'Open store operations',
+                          ),
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => context.push('/operations'),
+                ),
+              ),
+            ],
             _title('accountActivity'),
             Card(
               child: Column(
@@ -162,6 +200,13 @@ class AccountScreen extends ConsumerWidget {
     padding: const EdgeInsets.fromLTRB(4, 22, 4, 8),
     child: Text(
       key.tr(),
+      style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
+    ),
+  );
+  Widget _plainTitle(String label) => Padding(
+    padding: const EdgeInsets.fromLTRB(4, 22, 4, 8),
+    child: Text(
+      label,
       style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
     ),
   );
@@ -264,3 +309,6 @@ class AccountScreen extends ConsumerWidget {
     }
   }
 }
+
+String _localized(BuildContext context, String arabic, String english) =>
+    context.locale.languageCode == 'ar' ? arabic : english;

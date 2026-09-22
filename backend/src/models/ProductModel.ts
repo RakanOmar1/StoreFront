@@ -6,6 +6,7 @@ export class ProductModel {
     SELECT
       p.*,
       c.name AS category,
+      b.name AS brand,
       pr.id AS promotion_id,
       pr.name AS promotion_name,
       pr.type AS promotion_type,
@@ -15,6 +16,7 @@ export class ProductModel {
       pr.is_active AS promotion_is_active
     FROM products p
     LEFT JOIN categories c ON c.id = p.category_id
+    LEFT JOIN brands b ON b.id = p.brand_id
     LEFT JOIN promotions pr ON pr.id = p.promotion_id
   `
 
@@ -79,10 +81,10 @@ export class ProductModel {
     const images = this.normalizeImages(product)
     const mainImage = product.url || images[0] || null
     const result = await pool.query(
-      `INSERT INTO products (name, price, category, description, url, images, category_id, promotion_id)
-       VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7, $8)
+      `INSERT INTO products (name, price, category, description, url, images, category_id, promotion_id, brand_id)
+       VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7, $8, $9)
        RETURNING *`,
-      [product.name, product.price, product.category || null, product.description || null, mainImage, JSON.stringify(images), categoryId, product.promotion_id || null]
+      [product.name, product.price, product.category || null, product.description || null, mainImage, JSON.stringify(images), categoryId, product.promotion_id || null, product.brand_id || null]
     )
     return this.show(String(result.rows[0].id))
   }
@@ -97,24 +99,26 @@ export class ProductModel {
     const mainImage = product.url || images[0] || null
     const result = await pool.query(
       `UPDATE products
-       SET name = $1, price = $2, category = $3, description = $4, url = $5, images = $6::jsonb, category_id = $7, promotion_id = $8, updated_at = NOW()
-       WHERE id = $9
+       SET name = $1, price = $2, category = $3, description = $4, url = $5, images = $6::jsonb, category_id = $7, promotion_id = $8, brand_id = $9, updated_at = NOW()
+       WHERE id = $10
        RETURNING *`,
-      [product.name, product.price, product.category || null, product.description || null, mainImage, JSON.stringify(images), categoryId, promotionId, id]
+      [product.name, product.price, product.category || null, product.description || null, mainImage, JSON.stringify(images), categoryId, promotionId, product.brand_id || null, id]
     )
     return result.rows[0] ? this.show(id) : result.rows[0]
   }
 
   async delete(id: string): Promise<Product> {
-    const result = await pool.query('DELETE FROM products WHERE id = $1 RETURNING *', [id])
-    return result.rows[0]
+    const existing = await this.show(id)
+    if (!existing) return existing
+    await pool.query('DELETE FROM products WHERE id = $1', [id])
+    return existing
   }
 
   async popularProducts(): Promise<Product[]> {
     const result = await pool.query(
       `${this.productSelect}
        JOIN order_products op ON p.id = op.product_id
-       GROUP BY p.id, c.name, pr.id
+       GROUP BY p.id, c.name, b.name, pr.id
        ORDER BY SUM(op.quantity) DESC
        LIMIT 5`
     )
@@ -187,6 +191,8 @@ export class ProductModel {
       images: this.rowImages(row),
       category: row.category,
       category_id: row.category_id ? Number(row.category_id) : null,
+      brand_id: row.brand_id ? Number(row.brand_id) : null,
+      brand: row.brand || null,
       promotion_id: row.promotion_id ? Number(row.promotion_id) : null,
       promotion,
       finalPrice: Math.max(0, finalPrice),

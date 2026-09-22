@@ -1,4 +1,6 @@
 import request from 'supertest'
+import fs from 'fs'
+import path from 'path'
 import app from '../../server'
 import { createTables, clearTables } from '../helpers/db'
 import pool from '../../config/database'
@@ -92,8 +94,58 @@ describe('Storefront API endpoints', () => {
     expect(bad.status).toBe(401)
   })
 
-  it('allows local Angular development origins through CORS', async () => {
-    for (const origin of ['http://localhost:4200', 'http://127.0.0.1:4200']) {
+  it('invalidates an existing session when an administrator changes its role', async () => {
+    const customer = await request(app)
+      .post('/auth/register')
+      .send({
+        firstname: 'Role',
+        lastname: 'Change',
+        email: 'role.change@example.com',
+        password: 'secret'
+      })
+
+    const changed = await request(app)
+      .put(`/users/${customer.body.user.id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        firstname: 'Role',
+        lastname: 'Change',
+        email: 'role.change@example.com',
+        role: 'DELIVERY'
+      })
+
+    const staleSession = await request(app)
+      .get('/profile')
+      .set('Authorization', `Bearer ${customer.body.token}`)
+    const staleOptionalSession = await request(app)
+      .post('/users')
+      .set('Authorization', `Bearer ${customer.body.token}`)
+      .send({ firstname: 'Blocked', lastname: 'Session', password: 'secret' })
+    const freshLogin = await request(app)
+      .post('/auth/login')
+      .send({ identifier: 'role.change@example.com', password: 'secret' })
+    const freshSession = await request(app)
+      .get('/profile')
+      .set('Authorization', `Bearer ${freshLogin.body.token}`)
+
+    expect(changed.status).toBe(200)
+    expect(changed.body.role).toBe('DELIVERY')
+    expect(staleSession.status).toBe(401)
+    expect(staleSession.body.code).toBe('SESSION_STALE')
+    expect(staleOptionalSession.status).toBe(401)
+    expect(staleOptionalSession.body.code).toBe('SESSION_STALE')
+    expect(freshLogin.status).toBe(200)
+    expect(freshLogin.body.user.role).toBe('DELIVERY')
+    expect(freshSession.status).toBe(200)
+  })
+
+  it('allows local Angular and Flutter web development origins through CORS', async () => {
+    for (const origin of [
+      'http://localhost:4200',
+      'http://127.0.0.1:4200',
+      'http://localhost:7357',
+      'http://127.0.0.1:7357'
+    ]) {
       const response = await request(app)
         .options('/products')
         .set('Origin', origin)
@@ -102,6 +154,28 @@ describe('Storefront API endpoints', () => {
       expect(response.status).toBe(204)
       expect(response.headers['access-control-allow-origin']).toBe(origin)
       expect(response.headers['vary']).toContain('Origin')
+    }
+  })
+
+  it('serves uploaded avatars with Flutter web CORS headers', async () => {
+    const directory = path.resolve('uploads', 'test-fixtures')
+    const file = path.join(directory, 'avatar.txt')
+    fs.mkdirSync(directory, { recursive: true })
+    fs.writeFileSync(file, 'avatar')
+
+    try {
+      const response = await request(app)
+        .get('/uploads/test-fixtures/avatar.txt')
+        .set('Origin', 'http://localhost:7357')
+
+      expect(response.status).toBe(200)
+      expect(response.text).toBe('avatar')
+      expect(response.headers['access-control-allow-origin']).toBe(
+        'http://localhost:7357'
+      )
+      expect(response.headers['x-content-type-options']).toBe('nosniff')
+    } finally {
+      fs.rmSync(directory, { recursive: true, force: true })
     }
   })
 
@@ -135,21 +209,38 @@ describe('Storefront API endpoints', () => {
   it('registers and logs users out through auth endpoints', async () => {
     const signup = await request(app)
       .post('/auth/register')
-      .send({ firstname: 'Signup', lastname: 'User', password: 'pass123' })
+      .send({ firstname: 'Signup', lastname: 'User', email: 'signup@example.com', password: 'pass123', address: 'Al Manara', city: 'Ramallah', latitude: 31.9038, longitude: 35.2034 })
+
+    const missingContact = await request(app)
+      .post('/auth/register')
+      .send({ firstname: 'No', lastname: 'Contact', password: 'pass123' })
+
+    const shortPassword = await request(app)
+      .post('/auth/register')
+      .send({ firstname: 'Short', lastname: 'Password', phone: '0590000000', password: '12345' })
 
     const logout = await request(app)
       .post('/auth/logout')
       .set('Authorization', `Bearer ${signup.body.token}`)
 
     const rejectedLogout = await request(app).post('/auth/logout')
+    const loginAfterLogout = await request(app)
+      .post('/auth/login')
+      .send({ identifier: 'signup@example.com', password: 'pass123' })
 
     expect(signup.status).toBe(201)
     expect(signup.body.token).toBeDefined()
+    expect(signup.body.user.latitude).toBe(31.9038)
+    expect(signup.body.user.longitude).toBe(35.2034)
     expect(signup.body.user.firstname).toBe('Signup')
     expect(signup.body.user.password_digest).toBeUndefined()
+    expect(missingContact.status).toBe(400)
+    expect(shortPassword.status).toBe(400)
     expect(logout.status).toBe(200)
     expect(logout.body.message).toBe('Logged out')
     expect(rejectedLogout.status).toBe(401)
+    expect(loginAfterLogout.status).toBe(200)
+    expect(loginAfterLogout.body.user.id).toBe(signup.body.user.id)
   })
 
   it('handles product endpoints', async () => {
@@ -179,15 +270,40 @@ describe('Storefront API endpoints', () => {
     expect(remove.status).toBe(200)
   })
 
+  it('preserves decimal product prices', async () => {
+    const created = await request(app)
+      .post('/products')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ name: 'Decimal price item', price: 9.5, category: 'grocery' })
+
+    expect(created.status).toBe(201)
+    expect(Number(created.body.price)).toBe(9.5)
+
+    const shown = await request(app).get(`/products/${created.body.id}`)
+    expect(Number(shown.body.price)).toBe(9.5)
+  })
+
   it('rejects protected product writes without a token', async () => {
     const response = await request(app).post('/products').send({ name: 'Desk', price: 60 })
     expect(response.status).toBe(401)
   })
 
+  it('lets admins manage brands and assign them to products', async () => {
+    const created = await request(app).post('/brands').set('Authorization', `Bearer ${token}`).send({ name: 'Fresh Farm', description: 'Local produce' })
+    const updatedProduct = await request(app).put(`/products/${productId}`).set('Authorization', `Bearer ${token}`).send({ name: 'Pen', price: 3, category: 'office', brand_id: created.body.id })
+    const list = await request(app).get('/brands')
+    const blockedDelete = await request(app).delete(`/brands/${created.body.id}`).set('Authorization', `Bearer ${token}`)
+
+    expect(created.status).toBe(201)
+    expect(list.body[0].name).toBe('Fresh Farm')
+    expect(updatedProduct.body.brand).toBe('Fresh Farm')
+    expect(blockedDelete.status).toBe(400)
+  })
+
   it('prevents public role escalation and cross-account order access', async () => {
     const customer = await request(app)
       .post('/auth/register')
-      .send({ firstname: 'Other', lastname: 'Customer', password: 'secret', role: 'ADMIN' })
+      .send({ firstname: 'Other', lastname: 'Customer', email: 'other.customer@example.com', password: 'secret', role: 'ADMIN' })
 
     expect(customer.status).toBe(201)
     expect(customer.body.user.role).toBe('CUSTOMER')
@@ -237,6 +353,57 @@ describe('Storefront API endpoints', () => {
     expect(repeatedCancel.status).toBe(409)
   })
 
+  it('allows delivery staff to collect cash without granting catalog administration', async () => {
+    await pool.query(
+      "UPDATE orders SET delivery_type = 'DELIVERY', delivery_address = 'Al Manara, Ramallah', payment_method = 'CASH', payment_status = 'PENDING', status = 'OUT_FOR_DELIVERY' WHERE id = $1",
+      [orderId]
+    )
+    const created = await request(app)
+      .post('/users')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ firstname: 'Delivery', lastname: 'Driver', email: 'driver@example.com', password: 'driver-pass', role: 'DELIVERY' })
+    const login = await request(app)
+      .post('/auth/login')
+      .send({ identifier: 'driver@example.com', password: 'driver-pass' })
+    const deliveryToken = login.body.token
+
+    const pickup = await request(app)
+      .post('/orders')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ user_id: userId, status: 'PENDING', delivery_type: 'PICKUP' })
+
+    const list = await request(app).get('/orders').set('Authorization', `Bearer ${deliveryToken}`)
+    const show = await request(app).get(`/orders/${orderId}`).set('Authorization', `Bearer ${deliveryToken}`)
+    const forbiddenPickupShow = await request(app)
+      .get(`/orders/${pickup.body.id}`)
+      .set('Authorization', `Bearer ${deliveryToken}`)
+    const collect = await request(app)
+      .patch(`/orders/${orderId}/delivery`)
+      .set('Authorization', `Bearer ${deliveryToken}`)
+      .send({ payment_status: 'PAID', status: 'DELIVERED' })
+    const forbiddenProduct = await request(app)
+      .post('/products')
+      .set('Authorization', `Bearer ${deliveryToken}`)
+      .send({ name: 'Forbidden', price: 1 })
+    const forbiddenCancellation = await request(app)
+      .patch(`/orders/${orderId}/delivery`)
+      .set('Authorization', `Bearer ${deliveryToken}`)
+      .send({ status: 'CANCELLED' })
+
+    expect(created.status).toBe(201)
+    expect(login.body.user.role).toBe('DELIVERY')
+    expect(list.status).toBe(200)
+    expect(list.body.length).toBe(1)
+    expect(list.body.every((order: { delivery_type: string }) => order.delivery_type === 'DELIVERY')).toBe(true)
+    expect(show.status).toBe(200)
+    expect(forbiddenPickupShow.status).toBe(403)
+    expect(collect.status).toBe(200)
+    expect(collect.body.payment_status).toBe('PAID')
+    expect(collect.body.status).toBe('DELIVERED')
+    expect(forbiddenProduct.status).toBe(403)
+    expect(forbiddenCancellation.status).toBe(400)
+  })
+
   it('handles order endpoints', async () => {
     const addProduct = await request(app)
       .post(`/orders/${orderId}/products`)
@@ -248,6 +415,12 @@ describe('Storefront API endpoints', () => {
       .send({ quantity: 3 })
     const list = await request(app).get('/orders').set('Authorization', `Bearer ${token}`)
     const show = await request(app).get(`/orders/${orderId}`).set('Authorization', `Bearer ${token}`)
+    const removeProduct = await request(app)
+      .delete(`/orders/${orderId}/products/${addProduct.body.id}`)
+      .set('Authorization', `Bearer ${token}`)
+    const afterProductRemoval = await request(app)
+      .get(`/orders/${orderId}`)
+      .set('Authorization', `Bearer ${token}`)
     const current = await request(app).get(`/orders/users/${userId}/current`).set('Authorization', `Bearer ${token}`)
     const update = await request(app)
       .put(`/orders/${orderId}`)
@@ -261,6 +434,10 @@ describe('Storefront API endpoints', () => {
     expect(updateProduct.body.quantity).toBe(3)
     expect(list.body.length).toBe(1)
     expect(show.body.status).toBe('active')
+    expect(Number(show.body.total_amount)).toBe(9)
+    expect(removeProduct.status).toBe(200)
+    expect(afterProductRemoval.body.items).toEqual([])
+    expect(Number(afterProductRemoval.body.total_amount)).toBe(0)
     expect(current.body.length).toBe(1)
     expect(update.body.status).toBe('complete')
     expect(completed.body.length).toBe(1)

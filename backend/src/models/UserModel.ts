@@ -15,6 +15,8 @@ export class UserModel {
       phone: user.phone,
       address: user.address,
       city: user.city,
+      latitude: user.latitude,
+      longitude: user.longitude,
       avatar_url: user.avatar_url,
       role: user.role || 'CUSTOMER',
       is_active: user.is_active ?? true,
@@ -24,7 +26,7 @@ export class UserModel {
   }
 
   async showCurrent(id: number): Promise<PublicUser> {
-    const result = await pool.query('SELECT id, name, firstname, lastname, email, phone, address, city, avatar_url, role, is_active, created_at, updated_at FROM users WHERE id = $1', [id])
+    const result = await pool.query('SELECT id, name, firstname, lastname, email, phone, address, city, latitude, longitude, avatar_url, role, is_active, created_at, updated_at FROM users WHERE id = $1', [id])
     return result.rows[0]
   }
 
@@ -38,9 +40,9 @@ export class UserModel {
       ? existing.email
       : String(input.email || '').trim().toLowerCase() || null
     const result = await pool.query(
-      `UPDATE users SET name=$1, firstname=$2, lastname=$3, email=$4, phone=$5, address=$6, city=$7, updated_at=NOW() WHERE id=$8
-       RETURNING id, name, firstname, lastname, email, phone, address, city, avatar_url, role, is_active, created_at, updated_at`,
-      [name || existing.name, firstname, lastname, email, input.phone ?? existing.phone, input.address ?? existing.address, input.city ?? existing.city, id]
+      `UPDATE users SET name=$1, firstname=$2, lastname=$3, email=$4, phone=$5, address=$6, city=$7, latitude=$8, longitude=$9, updated_at=NOW() WHERE id=$10
+       RETURNING id, name, firstname, lastname, email, phone, address, city, latitude, longitude, avatar_url, role, is_active, created_at, updated_at`,
+      [name || existing.name, firstname, lastname, email, input.phone ?? existing.phone, input.address ?? existing.address, input.city ?? existing.city, input.latitude ?? existing.latitude, input.longitude ?? existing.longitude, id]
     )
     return result.rows[0]
   }
@@ -75,12 +77,14 @@ export class UserModel {
     const firstname = user.firstname || user.name?.split(' ')[0] || ''
     const lastname = user.lastname || user.name?.split(' ').slice(1).join(' ') || firstname
     const name = user.name || `${firstname} ${lastname}`.trim()
+    const email = String(user.email || '').trim().toLowerCase() || null
+    const phone = String(user.phone || '').trim() || null
 
     const result = await pool.query(
-      `INSERT INTO users (name, firstname, lastname, email, phone, address, city, role, password_digest)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-       RETURNING id, name, firstname, lastname, email, phone, address, city, role, is_active, created_at, updated_at`,
-      [name, firstname, lastname, user.email || null, user.phone || null, user.address || null, user.city || null, user.role || 'CUSTOMER', passwordDigest]
+      `INSERT INTO users (name, firstname, lastname, email, phone, address, city, latitude, longitude, role, password_digest)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+       RETURNING id, name, firstname, lastname, email, phone, address, city, latitude, longitude, role, is_active, created_at, updated_at`,
+      [name, firstname, lastname, email, phone, user.address || null, user.city || null, user.latitude ?? null, user.longitude ?? null, user.role || 'CUSTOMER', passwordDigest]
     )
     return result.rows[0]
   }
@@ -122,6 +126,8 @@ export class UserModel {
     const firstname = user.firstname || user.name?.split(' ')[0] || ''
     const lastname = user.lastname || user.name?.split(' ').slice(1).join(' ') || firstname
     const name = user.name || `${firstname} ${lastname}`.trim()
+    const email = String(user.email || '').trim().toLowerCase() || null
+    const phone = String(user.phone || '').trim() || null
 
     if (passwordDigest) {
       const result = await pool.query(
@@ -129,7 +135,7 @@ export class UserModel {
          SET name = $1, firstname = $2, lastname = $3, email = $4, phone = $5, role = COALESCE($6, role), password_digest = $7, updated_at = NOW()
          WHERE id = $8
          RETURNING id, name, firstname, lastname, email, phone, role, is_active, created_at, updated_at`,
-        [name, firstname, lastname, user.email || null, user.phone || null, user.role, passwordDigest, id]
+        [name, firstname, lastname, email, phone, user.role, passwordDigest, id]
       )
       return result.rows[0]
     }
@@ -139,7 +145,7 @@ export class UserModel {
        SET name = $1, firstname = $2, lastname = $3, email = $4, phone = $5, role = COALESCE($6, role), updated_at = NOW()
        WHERE id = $7
        RETURNING id, name, firstname, lastname, email, phone, role, is_active, created_at, updated_at`,
-      [name, firstname, lastname, user.email || null, user.phone || null, user.role, id]
+      [name, firstname, lastname, email, phone, user.role, id]
     )
     return result.rows[0]
   }

@@ -20,9 +20,22 @@ export async function ensureCommerceSchema(): Promise<void> {
       is_active BOOLEAN NOT NULL DEFAULT TRUE
     );
 
+    CREATE TABLE IF NOT EXISTS brands (
+      id SERIAL PRIMARY KEY,
+      name VARCHAR(120) NOT NULL UNIQUE,
+      description TEXT,
+      is_active BOOLEAN NOT NULL DEFAULT TRUE,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+    );
+
     ALTER TABLE promotions
       ADD COLUMN IF NOT EXISTS bundle_quantity INTEGER,
       ADD COLUMN IF NOT EXISTS bundle_price NUMERIC(10, 2);
+
+    ALTER TABLE products
+      ALTER COLUMN price TYPE NUMERIC(10, 2)
+      USING price::NUMERIC(10, 2);
 
     CREATE TABLE IF NOT EXISTS promotion_categories (
       promotion_id BIGINT NOT NULL REFERENCES promotions(id) ON DELETE CASCADE,
@@ -38,8 +51,11 @@ export async function ensureCommerceSchema(): Promise<void> {
       ADD COLUMN IF NOT EXISTS images JSONB NOT NULL DEFAULT '[]'::jsonb,
       ADD COLUMN IF NOT EXISTS category_id BIGINT REFERENCES categories(id) ON DELETE RESTRICT,
       ADD COLUMN IF NOT EXISTS promotion_id BIGINT REFERENCES promotions(id) ON DELETE SET NULL,
+      ADD COLUMN IF NOT EXISTS brand_id BIGINT REFERENCES brands(id) ON DELETE RESTRICT,
       ADD COLUMN IF NOT EXISTS created_at TIMESTAMP NOT NULL DEFAULT NOW(),
       ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP NOT NULL DEFAULT NOW();
+
+    CREATE INDEX IF NOT EXISTS products_brand_id_idx ON products(brand_id);
 
     INSERT INTO categories (name)
     SELECT DISTINCT category
@@ -63,6 +79,10 @@ export async function ensureCommerceSchema(): Promise<void> {
       ADD COLUMN IF NOT EXISTS created_at TIMESTAMP NOT NULL DEFAULT NOW(),
       ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP NOT NULL DEFAULT NOW();
 
+    ALTER TABLE users
+      ADD COLUMN IF NOT EXISTS latitude DOUBLE PRECISION,
+      ADD COLUMN IF NOT EXISTS longitude DOUBLE PRECISION;
+
     CREATE TABLE IF NOT EXISTS cart_items (
       id SERIAL PRIMARY KEY,
       cart_id BIGINT NOT NULL REFERENCES carts(id) ON DELETE CASCADE,
@@ -83,6 +103,8 @@ export async function ensureCommerceSchema(): Promise<void> {
       ADD COLUMN IF NOT EXISTS payment_method VARCHAR(20) NOT NULL DEFAULT 'CASH',
       ADD COLUMN IF NOT EXISTS delivery_type VARCHAR(20) NOT NULL DEFAULT 'PICKUP',
       ADD COLUMN IF NOT EXISTS delivery_address TEXT,
+      ADD COLUMN IF NOT EXISTS delivery_latitude DOUBLE PRECISION,
+      ADD COLUMN IF NOT EXISTS delivery_longitude DOUBLE PRECISION,
       ADD COLUMN IF NOT EXISTS created_at TIMESTAMP NOT NULL DEFAULT NOW(),
       ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP NOT NULL DEFAULT NOW();
 

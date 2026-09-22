@@ -7,6 +7,8 @@ export interface PublicUser {
   phone?: string | null
   address?: string | null
   city?: string | null
+  latitude?: number | null
+  longitude?: number | null
   role?: 'MANAGER' | 'ADMIN' | 'DELIVERY' | 'CUSTOMER'
   is_active?: boolean
   created_at?: string
@@ -21,6 +23,8 @@ export interface UserInput {
   phone?: string | null
   address?: string | null
   city?: string | null
+  latitude?: number | null
+  longitude?: number | null
   password: string
 }
 
@@ -32,5 +36,7 @@ export interface UserUpdate {
   phone?: string | null
   address?: string | null
   city?: string | null
+  latitude?: number | null
+  longitude?: number | null
   password?: string
 }

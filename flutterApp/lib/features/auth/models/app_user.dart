@@ -8,12 +8,15 @@ class AppUser {
     this.phone,
     this.address,
     this.city,
+    this.latitude,
+    this.longitude,
     this.avatarUrl,
     this.role,
   });
   final int id;
   final String firstname, lastname;
   final String? name, email, phone, address, city, avatarUrl, role;
+  final double? latitude, longitude;
   String get fullName =>
       name?.trim().isNotEmpty == true ? name! : ('$firstname $lastname').trim();
   factory AppUser.fromJson(Map<String, dynamic> j) => AppUser(
@@ -25,6 +28,8 @@ class AppUser {
     phone: j['phone']?.toString(),
     address: j['address']?.toString(),
     city: j['city']?.toString(),
+    latitude: double.tryParse('${j['latitude'] ?? ''}'),
+    longitude: double.tryParse('${j['longitude'] ?? ''}'),
     avatarUrl: j['avatar_url']?.toString(),
     role: j['role']?.toString(),
   );
@@ -37,6 +42,8 @@ class AppUser {
     'phone': phone,
     'address': address,
     'city': city,
+    'latitude': latitude,
+    'longitude': longitude,
     'avatar_url': avatarUrl,
     'role': role,
   };

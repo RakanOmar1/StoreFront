@@ -4,6 +4,7 @@ import { verifyAuthToken } from '../middleware/verifyAuthToken'
 import { authorizeResourceOwner } from '../middleware/authorizeResourceOwner'
 import { authorizeOrderAccess } from '../middleware/authorizeOrderAccess'
 import { requireAdmin } from '../middleware/requireAdmin'
+import { requireOrderStaff } from '../middleware/requireOrderStaff'
 
 const routes = Router()
 const controller = new OrderController()
@@ -16,6 +17,7 @@ routes.patch('/:id/cancel', verifyAuthToken, authorizeOrderAccess, controller.ca
 routes.post('/', verifyAuthToken, requireAdmin, controller.create)
 routes.post('/checkout', verifyAuthToken, controller.checkout)
 routes.put('/:id', verifyAuthToken, requireAdmin, controller.update)
+routes.patch('/:id/delivery', verifyAuthToken, requireOrderStaff, controller.updateDelivery)
 routes.delete('/:id', verifyAuthToken, requireAdmin, controller.delete)
 routes.post('/:id/products', verifyAuthToken, requireAdmin, controller.addProduct)
 routes.patch('/:id/products/:itemId', verifyAuthToken, requireAdmin, controller.updateProduct)

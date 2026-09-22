@@ -7,6 +7,8 @@ export type User = {
   phone?: string | null
   address?: string | null
   city?: string | null
+  latitude?: number | null
+  longitude?: number | null
   avatar_url?: string | null
   role?: 'MANAGER' | 'ADMIN' | 'DELIVERY' | 'CUSTOMER'
   is_active?: boolean
@@ -25,6 +27,8 @@ export type PublicUser = {
   phone?: string | null
   address?: string | null
   city?: string | null
+  latitude?: number | null
+  longitude?: number | null
   avatar_url?: string | null
   role?: 'MANAGER' | 'ADMIN' | 'DELIVERY' | 'CUSTOMER'
   is_active?: boolean

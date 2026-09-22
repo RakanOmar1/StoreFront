@@ -7,6 +7,8 @@ export interface Order {
   payment_method?: 'CASH' | 'ONLINE'
   delivery_type?: 'PICKUP' | 'DELIVERY'
   delivery_address?: string | null
+  delivery_latitude?: number | null
+  delivery_longitude?: number | null
   items?: OrderItem[]
   created_at?: string
   updated_at?: string
@@ -28,6 +30,8 @@ export interface CheckoutPayload {
   paymentMethod: 'CASH' | 'ONLINE'
   deliveryType: 'PICKUP' | 'DELIVERY'
   deliveryAddress?: string
+  deliveryLatitude?: number
+  deliveryLongitude?: number
 }
 
 export interface CheckoutResponse {
